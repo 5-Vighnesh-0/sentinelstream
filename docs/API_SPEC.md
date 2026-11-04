@@ -145,6 +145,7 @@ Sent every 1 second. Feeds the traffic chart and the Demo Mode banner (shown whe
   "data": {
     "timestamp": "2026-10-28T10:15:31.000Z",
     "packets_per_s": 412.0,
+    "packets": 98925,
     "dropped_flows": 0,
     "dropped_alerts": 0,
     "active_flows": 17,
@@ -155,7 +156,7 @@ Sent every 1 second. Feeds the traffic chart and the Demo Mode banner (shown whe
 }
 ```
 
-`dropped_packets` (our queue) and `kernel_dropped_packets` (the capture socket) are cumulative since the backend started.
+`packets` (processed by the pipeline), `dropped_packets` (our queue) and `kernel_dropped_packets` (the capture socket) are cumulative since the backend started. The dashboard shows each drop count as a share of their sum.
 
 ### `batch`
 
