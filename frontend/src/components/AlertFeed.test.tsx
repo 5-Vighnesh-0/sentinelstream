@@ -2,14 +2,19 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { act } from "react";
 import { expect, test, vi } from "vitest";
+import type { Focus } from "../insights";
 import AlertFeed, { type AlertItem, endpoint, evidence } from "./AlertFeed";
 
 const NOW = Date.parse("2026-10-29T12:00:10.000Z");
 
-function Feed({ alerts, captureTime = false, changed = new Map() }: { alerts: AlertItem[]; captureTime?: boolean; changed?: Map<string, "new" | "updated"> }) {
+function Feed({ alerts, captureTime = false, changed = new Map(), initialFocus = null, onAck = async () => {} }: {
+  alerts: AlertItem[]; captureTime?: boolean; changed?: Map<string, "new" | "updated">; initialFocus?: Focus | null;
+  onAck?: (id: string, acknowledged: boolean) => Promise<void>;
+}) {
   const [severity, setSeverity] = useState("all");
   const [activeOnly, setActiveOnly] = useState(false);
   const [held, setHeld] = useState(changed);
+  const [focus, setFocus] = useState<Focus | null>(initialFocus);
   return (
     <AlertFeed
       alerts={alerts}
@@ -24,9 +29,11 @@ function Feed({ alerts, captureTime = false, changed = new Map() }: { alerts: Al
       mutedCount={0}
       showMuted={false}
       onShowMuted={() => {}}
-      onAck={async () => {}}
+      onAck={onAck}
       onMute={async () => {}}
       exportName="live"
+      focus={focus}
+      onFocus={setFocus}
     />
   );
 }
@@ -142,4 +149,46 @@ test("details open under the row and Escape closes them, returning focus to the 
   fireEvent.keyDown(heading, { key: "Escape" });
   expect(screen.queryByRole("heading", { name: /details$/ })).toBeNull();
   expect(document.activeElement).toBe(button);
+});
+
+test("search narrows the feed to matching endpoints or attack names", () => {
+  const alerts = makeAlerts(3).map((a, i) => ({ ...a, src_ip: `10.0.0.${i + 1}` }));
+  render(<Feed alerts={alerts} />);
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search" }), { target: { value: "10.0.0.2" } });
+  expect(bodyRows()).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+  expect(bodyRows()).toHaveLength(3);
+});
+
+test("a focus shows as a chip that removes it", () => {
+  const alerts = makeAlerts(2).map((a, i) => ({ ...a, src_ip: `10.0.0.${i + 1}` }));
+  render(<Feed alerts={alerts} initialFocus={{ kind: "source", value: "10.0.0.1", label: "10.0.0.1" }} />);
+  expect(bodyRows()).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Remove filter 10.0.0.1" }));
+  expect(bodyRows()).toHaveLength(2);
+});
+
+test("/ focuses search; j and k move between rows; a acknowledges the focused row", () => {
+  const onAck = vi.fn(async () => {});
+  render(<Feed alerts={makeAlerts(3)} onAck={onAck} />);
+  fireEvent.keyDown(document.body, { key: "/" });
+  expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Search" }));
+  (document.activeElement as HTMLElement).blur();
+  const buttons = bodyRows().map((r) => within(r).getByRole("button"));
+  fireEvent.keyDown(document.body, { key: "j" });
+  expect(document.activeElement).toBe(buttons[0]);
+  fireEvent.keyDown(buttons[0], { key: "j" });
+  expect(document.activeElement).toBe(buttons[1]);
+  fireEvent.keyDown(buttons[1], { key: "k" });
+  expect(document.activeElement).toBe(buttons[0]);
+  fireEvent.keyDown(buttons[0], { key: "a" });
+  expect(onAck).toHaveBeenCalledWith(buttons[0].dataset.alert, true);
+});
+
+test("shortcuts do nothing while typing in the search box", () => {
+  render(<Feed alerts={makeAlerts(2)} />);
+  const search = screen.getByRole("searchbox", { name: "Search" });
+  search.focus();
+  fireEvent.keyDown(search, { key: "j" });
+  expect(document.activeElement).toBe(search);
 });

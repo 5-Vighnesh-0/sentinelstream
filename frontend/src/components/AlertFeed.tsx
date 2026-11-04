@@ -1,12 +1,15 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 import gsap from "gsap";
 import { Flip } from "gsap/Flip";
-import { Fragment, memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FEED_LIMIT, IN_EFFECT_MS } from "../config";
 import type { RuleIn } from "../api";
 import { downloadCsv } from "../csv";
+import { endpoint, matchesFocus, matchesSearch, type Focus } from "../insights";
 import AlertDetail from "./AlertDetail";
 import { LEVEL, LevelChip, inEffect, typeLabel, type Level } from "./Level";
+
+export { endpoint }; // its home is insights.ts; kept here for the components that import it from the feed
 
 export type AlertItem = {
   id: string;
@@ -43,11 +46,6 @@ export function evidence(alert: AlertItem): [string, string] {
   return [`classifier ${p}`, `Classifier's probability for ${alert.attack_type}: ${p}`];
 }
 
-/** IPv6 needs brackets before the port, or "::1:52362" is ambiguous. */
-export function endpoint(ip: string, port: number) {
-  return ip.includes(":") ? `[${ip}]:${port}` : `${ip}:${port}`;
-}
-
 // One formatter for every row: building an Intl formatter per call cost ~3 ms, and 200 rows re-render every second.
 const TIME = new Intl.DateTimeFormat([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 const DATE_TIME = new Intl.DateTimeFormat([], { dateStyle: "short", timeStyle: "medium" });
@@ -59,6 +57,14 @@ export function clockTime(iso: string | number, withDate = false) {
 gsap.registerPlugin(Flip);
 
 const SEEN_AFTER_MS = 700; // a pointer passing over a row is not reading it
+
+const KEYS: [string, string][] = [
+  ["/", "Search"],
+  ["j / k", "Next / previous alert"],
+  ["Enter", "Open or close details"],
+  ["a", "Acknowledge or undo"],
+  ["Esc", "Close details"],
+];
 
 type RowProps = {
   alert: AlertItem;
@@ -161,6 +167,8 @@ type Props = {
   onAck: (id: string, acknowledged: boolean) => Promise<void>;
   onMute: (rule: RuleIn) => Promise<void>;
   exportName: string;
+  focus: Focus | null; // set by the timeline, map or talkers
+  onFocus: (focus: Focus | null) => void;
 };
 
 /** Alerts by latest activity (last_seen) first; filters apply before the 200-row cap so a filter never hides matches beyond it.
@@ -170,6 +178,8 @@ export default function AlertFeed(props: Props) {
   const [attackType, setAttackType] = useState("all");
   const [needsAttention, setNeedsAttention] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const search = useRef<HTMLInputElement>(null);
   const attackTypes = useMemo(() => [...new Set(alerts.map((a) => a.attack_type))].sort(), [alerts]);
   const matching = useMemo(
     () =>
@@ -179,15 +189,17 @@ export default function AlertFeed(props: Props) {
             (severity === "all" || a.severity === severity) &&
             (attackType === "all" || a.attack_type === attackType) &&
             (!activeOnly || inEffect(a, clock)) &&
-            (!needsAttention || a.acknowledged_at === null),
+            (!needsAttention || a.acknowledged_at === null) &&
+            matchesSearch(a, query) &&
+            matchesFocus(a, props.focus),
         )
         // The API pages by first-seen timestamp, but the feed shows last_seen: order by what is shown.
         .sort((a, b) => Date.parse(b.last_seen) - Date.parse(a.last_seen)),
-    [alerts, severity, attackType, activeOnly, clock, needsAttention],
+    [alerts, severity, attackType, activeOnly, clock, needsAttention, query, props.focus],
   );
   const shown = matching.slice(0, FEED_LIMIT);
   const firstExpired = captureTime ? -1 : shown.findIndex((a) => !inEffect(a, clock));
-  const filtered = severity !== "all" || attackType !== "all" || activeOnly || needsAttention || props.showMuted;
+  const filtered = severity !== "all" || attackType !== "all" || activeOnly || needsAttention || props.showMuted || query.trim() !== "" || props.focus !== null;
   const toggleButton = (pressed: boolean) =>
     `min-h-9 rounded px-3 text-sm font-medium ring-1 ${pressed ? "bg-accent text-white ring-accent" : "text-accent ring-edge hover:bg-accent-tint"}`;
   const select = "mt-1 min-h-9 rounded border border-edge bg-surface px-2 text-sm text-ink";
@@ -220,6 +232,34 @@ export default function AlertFeed(props: Props) {
     setOpenId(null);
   }
 
+  // Shortcuts read the latest rows through a ref, so the listener is bound once.
+  const latest = useRef({ shown, openId, onAck: props.onAck });
+  latest.current = { shown, openId, onAck: props.onAck };
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (e.ctrlKey || e.metaKey || e.altKey || target.closest?.("input, select, textarea, [contenteditable='true']")) return;
+      const rows = [...(body.current?.querySelectorAll<HTMLElement>("[data-alert]") ?? [])];
+      const at = rows.indexOf(document.activeElement as HTMLElement);
+      if (e.key === "/") {
+        e.preventDefault();
+        search.current?.focus();
+      } else if ((e.key === "j" || e.key === "k") && rows.length) {
+        e.preventDefault();
+        rows[at === -1 ? 0 : Math.min(rows.length - 1, Math.max(0, at + (e.key === "j" ? 1 : -1)))].focus();
+      } else if (e.key === "a") {
+        const id = (document.activeElement as HTMLElement | null)?.dataset.alert ?? latest.current.openId;
+        const alert = latest.current.shown.find((x) => x.id === id);
+        if (!alert) return;
+        e.preventDefault();
+        // a failed save leaves the row as it was; the details panel's own button reports failures in words
+        latest.current.onAck(alert.id, alert.acknowledged_at === null).catch(() => {});
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <section className="ink-panel ink-panel-brush bg-surface" aria-labelledby="alerts-heading">
       <div className="flex flex-wrap items-end gap-3 px-4 pt-4 pb-3">
@@ -229,7 +269,29 @@ export default function AlertFeed(props: Props) {
             Showing {shown.length.toLocaleString("en-US")} of {matching.length.toLocaleString("en-US")}
             {activeOnly ? ", in effect only" : ", latest activity first"}
           </p>
+          {props.focus && (
+            <button
+              type="button"
+              onClick={() => props.onFocus(null)}
+              aria-label={`Remove filter ${props.focus.label}`}
+              className="mt-1.5 inline-flex min-h-7 items-center gap-1.5 rounded bg-accent px-2 font-mono text-xs font-semibold text-white"
+            >
+              {props.focus.label}
+              <X aria-hidden size={12} />
+            </button>
+          )}
         </div>
+        <label className="flex flex-col text-xs font-medium text-muted">
+          Search
+          <input
+            ref={search}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="IP, port or attack"
+            className={`${select} w-44 font-normal placeholder:text-muted`}
+          />
+        </label>
         <button type="button" aria-pressed={needsAttention} onClick={() => setNeedsAttention(!needsAttention)} className={toggleButton(needsAttention)}>
           Needs attention
         </button>
@@ -264,6 +326,8 @@ export default function AlertFeed(props: Props) {
               onFilter("all", false);
               setAttackType("all");
               setNeedsAttention(false);
+              setQuery("");
+              props.onFocus(null);
               props.onShowMuted(false);
             }}
           >
@@ -278,6 +342,22 @@ export default function AlertFeed(props: Props) {
         >
           Export CSV
         </button>
+        <details className="relative">
+          <summary
+            aria-label="Keyboard shortcuts"
+            className="flex min-h-9 min-w-9 cursor-pointer list-none items-center justify-center rounded text-sm font-semibold text-accent ring-1 ring-edge hover:bg-accent-tint"
+          >
+            ?
+          </summary>
+          <dl className="absolute right-0 z-10 mt-2 grid w-60 grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 rounded-md border border-hairline bg-surface p-3 text-xs">
+            {KEYS.map(([key, what]) => (
+              <Fragment key={key}>
+                <dt><kbd className="font-mono font-semibold">{key}</kbd></dt>
+                <dd className="text-muted">{what}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </details>
       </div>
       <div className="feed-scroll overflow-x-auto">
         <table className="w-full text-left text-sm">
