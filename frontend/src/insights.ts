@@ -34,7 +34,7 @@ export function matchesSearch(a: AlertItem, query: string): boolean {
   return [endpoint(a.src_ip, a.src_port), endpoint(a.dst_ip, a.dst_port), typeLabel(a.attack_type)].some((s) => s.toLowerCase().includes(q));
 }
 
-export type Bucket = { start: number; end: number; high: number; medium: number; low: number };
+export type Bucket = { start: number; end: number } & Record<Level, number>;
 
 /** `count` buckets of `size` ms ending at `end`, counting alerts by first-seen time. An aggregated alert keeps only
  *  its first and last time, so repeats cannot be placed in minutes: this counts new alerts, not detections. */

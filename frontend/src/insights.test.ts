@@ -57,6 +57,15 @@ test("top talkers sum repeats and break ties by latest activity", () => {
   const { sources, ports } = topTalkers(alerts);
   expect(sources).toEqual([{ value: "10.0.0.2", count: 4 }, { value: "10.0.0.3", count: 3 }]);
   expect(ports).toEqual([{ value: "80", count: 6 }, { value: "443", count: 1 }]);
+
+  // Equal totals: the source seen more recently ranks first, whichever order the alerts arrive in.
+  const tied = (earlier: string, later: string) =>
+    topTalkers([
+      alert({ src_ip: earlier, count: 2, last_seen: at(0) }),
+      alert({ src_ip: later, count: 2, last_seen: at(5_000) }),
+    ]).sources.map((t) => t.value);
+  expect(tied("10.0.0.2", "10.0.0.3")).toEqual(["10.0.0.3", "10.0.0.2"]);
+  expect(tied("10.0.0.3", "10.0.0.2")).toEqual(["10.0.0.2", "10.0.0.3"]);
 });
 
 test("attack map keeps the top n per side and folds the rest into +N more", () => {
