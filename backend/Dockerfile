@@ -3,8 +3,10 @@
 FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
 
 # tcpdump: Scapy uses it to compile BPF capture filters.
+# shortcut: the --only-upgrade line unpins apt and zlib1g; drop it once a Dependabot digest bump ships apt >= 3.0.4 and zlib1g >= 1.3.1-1+deb13u1.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tcpdump \
+    && apt-get install -y --no-install-recommends --only-upgrade apt zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
