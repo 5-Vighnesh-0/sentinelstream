@@ -1014,3 +1014,66 @@ private vulnerability reporting enabled: true
 
 - The first local run of `scripts/e2e-demo.sh` used the default compose project, so its `down -v` removed the local demo's data volume (test alerts and the dashboard token, which regenerates). The script now uses its own project name, `sentinelstream-e2e`.
 - Branch protection is proven by this evidence PR: it could merge only after the six required checks passed.
+
+## Post-v1 sub-project 3: analyst features
+
+Spec: [docs/superpowers/specs/2026-10-31-analyst-features-design.md](docs/superpowers/specs/2026-10-31-analyst-features-design.md).
+
+### Tasks completed
+
+- Parts 1 and 2 (acknowledge, mute rules, upload history, CSV export; schema change human-approved): PR #9, merged as `f5e977e` on 2026-11-03 after the six required checks passed (python, frontend, docker, audit, trivy, e2e).
+- Part 3, live false-positive measurement: two 1-hour runs back to back, normal desktop use, no simulator. Results recorded in docs/LIMITATIONS.md and docs/EVALUATION.md; README unchanged (AGENTS rule 4).
+
+### Evidence — live false-positive measurement
+
+```
+sudo setpriv --reuid=1000 --regid=1000 --init-groups --inh-caps=+net_raw --ambient-caps=+net_raw \
+  sh -c '.venv/bin/python -m backend.pipeline --iface wlp6s0 --duration 3600; .venv/bin/python -m backend.pipeline --iface lo --duration 3600' \
+  2>&1 >/dev/null | tee data/fp-capture.log
+```
+
+Summary lines (first `wlp6s0`, then `lo`; the log has no warnings or errors):
+
+```
+2026-11-03 17:09:00,240 INFO summary {"elapsed_s": 3600.2, "packets": 103115, "flows_scored": 4448, "flows_unscored": 562, "dropped_packets": 0, "kernel_dropped_packets": 260185, "active_flows": 0, "evicted_flows": 0, "max_delay_s": 6.79, "alerts": {"random_forest": 220, "isolation_forest": 97}, "alerts_per_hour": {"random_forest": 220.0, "isolation_forest": 97.0}}
+2026-11-03 18:09:04,141 INFO summary {"elapsed_s": 3600.3, "packets": 249142, "flows_scored": 832, "flows_unscored": 5, "dropped_packets": 0, "kernel_dropped_packets": 0, "active_flows": 0, "evicted_flows": 0, "max_delay_s": 6.33, "alerts": {"random_forest": 18, "isolation_forest": 297}, "alerts_per_hour": {"random_forest": 18.0, "isolation_forest": 297.0}}
+```
+
+### Observations
+
+- The kernel dropped 260,185 packets on Wi-Fi against 103,115 read (about 72%), so the Wi-Fi rates are a floor. Python + Scapy capture remains the bottleneck noted in Phase 2.
+- On Wi-Fi the Random Forest raised more false positives (220/hour) than the Isolation Forest (97/hour); on loopback the Isolation Forest did (297 vs 18). Reducing both is sub-project 4 (detection quality) material.
+
+## Post-v1 sub-project: dashboard insights
+
+Spec: [docs/superpowers/specs/2026-11-03-dashboard-insights-design.md](docs/superpowers/specs/2026-11-03-dashboard-insights-design.md). Plan: [docs/superpowers/plans/2026-11-03-dashboard-insights.md](docs/superpowers/plans/2026-11-03-dashboard-insights.md). Built task by task, each task implemented by one agent and reviewed by another (spec compliance and code quality), then a whole-branch review.
+
+### Tasks completed
+
+- Backend: `stats` messages carry cumulative `packets` (API_SPEC updated with it).
+- `frontend/src/insights.ts`: pure functions for the timeline, top talkers, attack map, search, the shared focus filter and drop shares.
+- Alert feed: search box, removable focus chip, keyboard shortcuts (`/`, `j`/`k`, Enter, `a`, Esc) and a key list.
+- New panels: alert timeline, attack map, top talkers; "Packets per second" became Capture (active flows, queue and kernel drop shares, kernel drops above 5% flagged); Attack types rebuilt as HTML bars that re-rank with GSAP Flip.
+- Human decision during execution: attack-map stroke width is linear in detections (the plan's square-root curve contradicted the "linear from zero" rule).
+- Whole-branch review fixes: the timeline says "older alerts not loaded" when the backend holds more than the view; `j`/`k` continue from an open alert; Esc closes details from anywhere; an App-level test of the shared focus.
+- Visual check (Docker demo, 1440 px and 390 px): fixed an attack map that kept its default width when it first rendered empty (strokes overlapped labels), truncation of long service labels, and Capture figures that blinked once a second.
+- DESIGN.md: chart rules, the five panels, the focus filter and keys, the vermilion exception for kernel drops, no perspective or 3D.
+
+### Evidence — checks on the final commit
+
+```
+117 passed, 1 warning in 33.17s
+All checks passed!
+ Test Files  8 passed (8)
+      Tests  82 passed (82)
+✓ built in 463ms
+impeccable detect: []
+RESULT: 0 FAIL, 22 WARN
+```
+
+The 22 taste-lint warnings are monospace on IP addresses, ports and times (literal machine values, kept mono by design). The build still prints Vite's >500 kB chunk advisory, which predates this sub-project.
+
+### Notes
+
+- Panels compute from the alerts the dashboard holds (latest 200 live, 500 per upload) and say so; they are not database-wide aggregates.
+- Minor review findings left open are listed in the review ledger: the timeline and map recompute every second (their `memo` is ineffective because `clock` changes), `a` acknowledges the open alert from any panel, and a few test-coverage gaps.
