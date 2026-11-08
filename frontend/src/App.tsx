@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ackAlert, createRule, deleteRule, listRules, listUploads, mutedBy, type Rule, type RuleIn } from "./api";
 import AlertFeed, { clockTime, type AlertItem } from "./components/AlertFeed";
+import AlertTimeline from "./components/AlertTimeline";
 import AttackDistribution from "./components/AttackDistribution";
 import Banners from "./components/Banners";
 import InEffectStrip from "./components/InEffectStrip";
@@ -12,6 +13,7 @@ import StatusPill from "./components/StatusPill";
 import TokenForm from "./components/TokenForm";
 import TrafficChart, { type TrafficPoint } from "./components/TrafficChart";
 import { API_URL, STALE_AFTER_MS, TRAFFIC_WINDOW_S, WS_URL } from "./config";
+import type { Focus } from "./insights";
 import { authHeader, loadToken, saveToken } from "./token";
 import { useWebSocket } from "./useWebSocket";
 
@@ -44,6 +46,7 @@ export default function App() {
   const [activeOnly, setActiveOnly] = useState(false); // the strip filters to what it counts: in effect only
   const [rules, setRules] = useState<Rule[]>([]);
   const [showMuted, setShowMuted] = useState(false);
+  const [focus, setFocus] = useState<Focus | null>(null); // set by the timeline, map or talkers; narrows the feed
   const [changed, setChanged] = useState<Map<string, "new" | "updated">>(new Map());
   const [announcement, setAnnouncement] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -164,6 +167,7 @@ export default function App() {
     setView(batchId);
     filter("all", false);
     setShowMuted(false);
+    setFocus(null);
     if (batchId !== null) loadAlerts(batchId);
   }
 
@@ -240,6 +244,7 @@ export default function App() {
         {/* grid-cols-1 = minmax(0, 1fr): without it the column grows to the table's width on phones */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <div className="space-y-4">
+            {!locked && <AlertTimeline alerts={visible} clock={clock} capture={view !== null} focus={focus} onFocus={setFocus} />}
             {locked ? (
               <TokenForm onSave={saveNewToken} rejected={rejected} />
             ) : (
@@ -260,6 +265,8 @@ export default function App() {
                 onAck={onAck}
                 onMute={onMute}
                 exportName={view === null ? "live" : `upload-${view}`}
+                focus={focus}
+                onFocus={setFocus}
               />
             )}
           </div>
