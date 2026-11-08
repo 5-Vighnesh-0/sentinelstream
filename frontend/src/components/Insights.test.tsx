@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, test, vi } from "vitest";
+import gsap from "gsap";
+import { afterEach, expect, test, vi } from "vitest";
 import type { AlertItem } from "./AlertFeed";
 import AlertTimeline from "./AlertTimeline";
 import AttackMap from "./AttackMap";
@@ -42,4 +43,53 @@ test("map: one button per source and service, +N more past eight, and a click fo
 test("map: says so when there is nothing to map", () => {
   render(<AttackMap alerts={[]} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
   expect(screen.getByText("No attacks to map yet.")).toBeTruthy();
+});
+
+afterEach(() => vi.restoreAllMocks());
+
+const pair = (n: number, over: Partial<AlertItem> = {}) => alert({ src_ip: `10.0.0.${n}`, ...over });
+
+test("map: one stroke per pair, toned by whether a High is in effect", () => {
+  const old = new Date(T0 - 60_000).toISOString();
+  const { container } = render(<AttackMap alerts={[pair(1, { severity: "high" }), pair(2, { last_seen: old, timestamp: old })]} clock={T0 + 1_000} capture={false} focus={null} onFocus={() => {}} />);
+  const paths = container.querySelectorAll("path[data-link]");
+  expect(paths.length).toBe(2);
+  expect(container.querySelector('path[data-link^="10.0.0.1|"]')!.getAttribute("class")).toContain("stroke-sev-high");
+  expect(container.querySelector('path[data-link^="10.0.0.2|"]')!.getAttribute("class")).toContain("stroke-edge");
+});
+
+test("map: stroke width is linear in detections", () => {
+  const { container } = render(<AttackMap alerts={[pair(1, { count: 4 }), pair(2, { count: 1 })]} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
+  expect(container.querySelector('path[data-link^="10.0.0.1|"]')!.getAttribute("stroke-width")).toBe("4");
+  expect(container.querySelector('path[data-link^="10.0.0.2|"]')!.getAttribute("stroke-width")).toBe("1");
+});
+
+test("map: only new links draw in", () => {
+  const fromTo = vi.spyOn(gsap, "fromTo").mockReturnValue({} as gsap.core.Tween);
+  const first = pair(1);
+  const props = { clock: T0, capture: false, focus: null, onFocus: () => {} };
+  const { container, rerender } = render(<AttackMap alerts={[first]} {...props} />);
+  rerender(<AttackMap alerts={[first, pair(2)]} {...props} />);
+  expect(fromTo).toHaveBeenCalledTimes(2);
+  const targets = fromTo.mock.calls[1][0] as Element[];
+  expect(targets.length).toBe(1);
+  expect(targets[0]).toBe(container.querySelector('path[data-link^="10.0.0.2|"]'));
+});
+
+test("map: reduced motion draws nothing", () => {
+  const fromTo = vi.spyOn(gsap, "fromTo");
+  const original = window.matchMedia;
+  window.matchMedia = ((q: string) => ({ matches: q === "(prefers-reduced-motion: reduce)", media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+  try {
+    render(<AttackMap alerts={[pair(1)]} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
+    expect(fromTo).not.toHaveBeenCalled();
+  } finally {
+    window.matchMedia = original;
+  }
+});
+
+test("map: more than eight services says +1 more on the right", () => {
+  const alerts = Array.from({ length: 9 }, (_, i) => alert({ dst_port: 1000 + i }));
+  render(<AttackMap alerts={alerts} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
+  expect(screen.getByText("+1 more")).toBeTruthy();
 });

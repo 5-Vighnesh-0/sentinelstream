@@ -23,8 +23,8 @@ function useWidth() {
 
 type Props = { alerts: AlertItem[]; clock: number; capture: boolean; focus: Focus | null; onFocus: (focus: Focus | null) => void };
 
-/** Sources on the left, targeted services on the right, one ink stroke per pair. Weight is detections (square root,
- *  so one loud pair doesn't erase the rest); vermilion only while a High on that pair is in effect.
+/** Sources on the left, targeted services on the right, one ink stroke per pair. Weight is detections, linear from zero
+ *  (0.75px is only a visibility floor); vermilion only while a High on that pair is in effect.
  *  New strokes draw themselves from source to target; the depth is layering, never perspective. */
 export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus }: Props) {
   const map = attackMap(alerts);
@@ -41,7 +41,7 @@ export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus 
     const fresh = paths.filter((p) => !drawn.current.has(p.dataset.link!));
     fresh.forEach((p) => drawn.current.add(p.dataset.link!));
     if (!fresh.length || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    gsap.fromTo(fresh, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.8, ease: "power2.out", stagger: 0.04 });
+    gsap.fromTo(fresh, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.8, ease: "power2.out", stagger: Math.min(0.04, 0.6 / fresh.length) });
   }, [ids]);
 
   function node(n: MapNode, side: "source" | "service", more: number) {
@@ -77,7 +77,7 @@ export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus 
         strokeDasharray={1}
         fill="none"
         strokeLinecap="round"
-        strokeWidth={1 + 3 * Math.sqrt(l.count / heaviest)}
+        strokeWidth={Math.max(0.75, 4 * (l.count / heaviest))}
         className={`${TONE[tone]} ${tone === "expired" ? "opacity-60" : ""}`}
       />
     );
