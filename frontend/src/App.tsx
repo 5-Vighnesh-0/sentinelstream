@@ -15,7 +15,7 @@ import TokenForm from "./components/TokenForm";
 import TrafficChart, { type TrafficPoint } from "./components/TrafficChart";
 import TopTalkers from "./components/TopTalkers";
 import { API_URL, STALE_AFTER_MS, TRAFFIC_WINDOW_S, WS_URL } from "./config";
-import type { Focus } from "./insights";
+import type { Focus, Health } from "./insights";
 import { authHeader, loadToken, saveToken } from "./token";
 import { useWebSocket } from "./useWebSocket";
 
@@ -39,6 +39,7 @@ export default function App() {
   const [traffic, setTraffic] = useState<TrafficPoint[]>([]);
   const [iface, setIface] = useState<string | null>(null);
   const [lastStatAt, setLastStatAt] = useState<number | null>(null);
+  const [health, setHealth] = useState<Health | null>(null);
   const [modelLoaded, setModelLoaded] = useState<boolean | null>(null);
   const [batches, setBatches] = useState<Record<number, Batch>>({});
   const [token, setToken] = useState(loadToken);
@@ -110,6 +111,8 @@ export default function App() {
     } else if (message.type === "stats") {
       setIface(message.data.iface);
       setLastStatAt(Date.now());
+      const d = message.data;
+      setHealth({ packets: d.packets, activeFlows: d.active_flows, queueDropped: d.dropped_packets, kernelDropped: d.kernel_dropped_packets });
       const time = clockTime(message.data.timestamp);
       setTraffic((prev) => [...prev, { time, pps: message.data.packets_per_s }].slice(-TRAFFIC_WINDOW_S));
     } else if (message.type === "batch") {
@@ -274,7 +277,7 @@ export default function App() {
           </div>
           <div className="space-y-4">
             {!locked && <AttackMap alerts={visible} clock={clock} capture={view !== null} focus={focus} onFocus={setFocus} />}
-            <TrafficChart points={traffic} stale={stale || status === "reconnecting"} />
+            {view === null && <TrafficChart points={traffic} stale={stale || status === "reconnecting"} health={health} />}
             {!locked && <TopTalkers alerts={visible} focus={focus} onFocus={setFocus} />}
             <AttackDistribution alerts={visible} />
             {!locked && (

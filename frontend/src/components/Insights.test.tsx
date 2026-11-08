@@ -5,6 +5,7 @@ import type { AlertItem } from "./AlertFeed";
 import AlertTimeline from "./AlertTimeline";
 import AttackMap from "./AttackMap";
 import TopTalkers from "./TopTalkers";
+import TrafficChart from "./TrafficChart";
 
 const T0 = Date.parse("2026-11-03T12:00:00.000Z");
 
@@ -115,4 +116,19 @@ test("talkers: clicking the selected talker clears the focus", () => {
 test("talkers: says so when there are no detections", () => {
   render(<TopTalkers alerts={[]} focus={null} onFocus={() => {}} />);
   expect(screen.getByText("No detections in this view yet.")).toBeTruthy();
+});
+
+test("capture: flows and both drop shares, kernel drops flagged above 5%", () => {
+  render(<TrafficChart points={[{ time: "12:00:00", pps: 40 }]} stale={false} health={{ packets: 280, activeFlows: 12, queueDropped: 0, kernelDropped: 720 }} />);
+  expect(screen.getByRole("heading", { name: "Capture" })).toBeTruthy();
+  expect(screen.getByText("12")).toBeTruthy();
+  expect(screen.getByText("0%")).toBeTruthy();
+  const kernel = screen.getByText("72.0%");
+  expect(kernel.closest("dd")?.className).toContain("text-sev-high");
+});
+
+test("capture: without stats yet, no flow or drop figures", () => {
+  render(<TrafficChart points={[]} stale={false} health={null} />);
+  expect(screen.getByRole("heading", { name: "Capture" })).toBeTruthy();
+  expect(screen.queryByText("Active flows")).toBeNull();
 });
