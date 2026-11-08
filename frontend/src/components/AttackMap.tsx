@@ -4,11 +4,13 @@ import { MORE, attackMap, linkTone, type Focus, type MapLink, type MapNode } fro
 import type { AlertItem } from "./AlertFeed";
 
 const ROW = 28; // px per node; node rows and stroke ends share it
+const INSET = 6; // stroke ends and dots stay clear of the labels beside them
 const TONE = { high: "stroke-sev-high", active: "stroke-ink", expired: "stroke-edge" } as const;
 const LAYER = { expired: 0, active: 1, high: 2 } as const; // expired strokes sit beneath, Highs on top
 
 /** The middle column's width, so strokes are drawn in real pixels (scaling an SVG would stretch their weight). */
-function useWidth() {
+// `shown`: the column only exists once there is something to map, so observe again when it appears.
+function useWidth(shown: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(96);
   useLayoutEffect(() => {
@@ -17,7 +19,7 @@ function useWidth() {
     const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [shown]);
   return [ref, width] as const;
 }
 
@@ -29,7 +31,7 @@ type Props = { alerts: AlertItem[]; clock: number; capture: boolean; focus: Focu
 export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus }: Props) {
   const map = attackMap(alerts);
   const height = Math.max(map.sources.length, map.services.length) * ROW;
-  const [mid, width] = useWidth();
+  const [mid, width] = useWidth(map.links.length > 0);
   const svg = useRef<SVGSVGElement>(null);
   const drawn = useRef(new Set<string>());
   const heaviest = Math.max(1, ...map.links.map((l) => l.count));
@@ -57,7 +59,7 @@ export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus 
         aria-label={`${n.key} ${n.count} ${n.count === 1 ? "detection" : "detections"}`}
         aria-pressed={selected}
         onClick={() => onFocus(selected ? null : { kind: side, value: n.key, label: n.key })}
-        className={`flex h-7 min-w-0 items-center gap-1.5 rounded px-1 font-mono text-[12px] ${side === "service" ? "flex-row-reverse" : ""} ${selected ? "bg-accent text-white" : "hover:bg-sunk"}`}
+        className={`flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded px-1 font-mono text-[12px] ${side === "service" ? "flex-row-reverse" : ""} ${selected ? "bg-accent text-white" : "hover:bg-sunk"}`}
       >
         <span className="truncate">{n.key}</span>
         <span className={`shrink-0 ${selected ? "" : "text-muted"}`}>{n.count.toLocaleString("en-US")}</span>
@@ -72,7 +74,7 @@ export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus 
       <path
         key={`${l.source}|${l.service}`}
         data-link={`${l.source}|${l.service}`}
-        d={`M0 ${y1} C ${width / 2} ${y1}, ${width / 2} ${y2}, ${width} ${y2}`}
+        d={`M${INSET} ${y1} C ${width / 2} ${y1}, ${width / 2} ${y2}, ${width - INSET} ${y2}`}
         pathLength={1}
         strokeDasharray={1}
         fill="none"
@@ -98,8 +100,8 @@ export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus 
           <div ref={mid} style={{ height }}>
             <svg ref={svg} width={width} height={height} aria-hidden className="overflow-visible">
               {[...map.links].sort((a, b) => LAYER[linkTone(a, clock, capture)] - LAYER[linkTone(b, clock, capture)]).map(stroke)}
-              {map.sources.map((n) => <circle key={`s${n.key}`} cx={0} cy={y(map.sources, n.key)} r={2.5} className="fill-ink" />)}
-              {map.services.map((n) => <circle key={`v${n.key}`} cx={width} cy={y(map.services, n.key)} r={2.5} className="fill-ink" />)}
+              {map.sources.map((n) => <circle key={`s${n.key}`} cx={INSET} cy={y(map.sources, n.key)} r={2.5} className="fill-ink" />)}
+              {map.services.map((n) => <circle key={`v${n.key}`} cx={width - INSET} cy={y(map.services, n.key)} r={2.5} className="fill-ink" />)}
             </svg>
           </div>
           <div className="flex min-w-0 flex-col items-end">{map.services.map((n) => node(n, "service", map.moreServices))}</div>

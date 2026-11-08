@@ -175,3 +175,19 @@ test("timeline: says when older alerts were not loaded", () => {
   render(<AlertTimeline {...props} />);
   expect(screen.queryByText(/older alerts not loaded/)).toBeNull();
 });
+
+test("map: strokes follow the column's measured width even when the map first renders empty", () => {
+  const original = (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+  (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
+    constructor(private cb: (entries: { contentRect: { width: number } }[]) => void) {}
+    observe() { this.cb([{ contentRect: { width: 84 } }]); }
+    disconnect() {}
+  };
+  try {
+    const { container, rerender } = render(<AttackMap alerts={[]} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
+    rerender(<AttackMap alerts={[alert()]} clock={T0 + 1_000} capture={false} focus={null} onFocus={() => {}} />);
+    expect(container.querySelector("svg")?.getAttribute("width")).toBe("84");
+  } finally {
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver = original;
+  }
+});

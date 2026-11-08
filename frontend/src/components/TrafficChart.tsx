@@ -9,9 +9,9 @@ function Figure({ label, value, warn = false, note = "", title }: { label: strin
   return (
     <div title={title}>
       <dt className="text-xs text-muted">{label}</dt>
-      {/* keyed by value: each change ticks in, like the band's counts */}
+      {/* no tick here: these change every second, and a tick each second reads as flicker */}
       <dd className={`font-mono text-sm ${warn ? "font-semibold text-sev-high" : ""}`}>
-        <span key={value} className="count-tick">{value}</span>
+        <span>{value}</span>
         {warn && <span className="sr-only">{note}</span>}
       </dd>
     </div>
