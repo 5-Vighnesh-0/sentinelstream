@@ -13,6 +13,7 @@ import PCAPUpload, { type Batch } from "./components/PCAPUpload";
 import StatusPill from "./components/StatusPill";
 import TokenForm from "./components/TokenForm";
 import TrafficChart, { type TrafficPoint } from "./components/TrafficChart";
+import TopTalkers from "./components/TopTalkers";
 import { API_URL, STALE_AFTER_MS, TRAFFIC_WINDOW_S, WS_URL } from "./config";
 import type { Focus } from "./insights";
 import { authHeader, loadToken, saveToken } from "./token";
@@ -274,6 +275,7 @@ export default function App() {
           <div className="space-y-4">
             {!locked && <AttackMap alerts={visible} clock={clock} capture={view !== null} focus={focus} onFocus={setFocus} />}
             <TrafficChart points={traffic} stale={stale || status === "reconnecting"} />
+            {!locked && <TopTalkers alerts={visible} focus={focus} onFocus={setFocus} />}
             <AttackDistribution alerts={visible} />
             {!locked && (
               <PCAPUpload

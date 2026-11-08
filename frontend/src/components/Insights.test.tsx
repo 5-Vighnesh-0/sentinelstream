@@ -4,6 +4,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { AlertItem } from "./AlertFeed";
 import AlertTimeline from "./AlertTimeline";
 import AttackMap from "./AttackMap";
+import TopTalkers from "./TopTalkers";
 
 const T0 = Date.parse("2026-11-03T12:00:00.000Z");
 
@@ -92,4 +93,26 @@ test("map: more than eight services says +1 more on the right", () => {
   const alerts = Array.from({ length: 9 }, (_, i) => alert({ dst_port: 1000 + i }));
   render(<AttackMap alerts={alerts} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
   expect(screen.getByText("+1 more")).toBeTruthy();
+});
+
+test("talkers: ranked sources and ports; a click focuses the feed", () => {
+  const onFocus = vi.fn();
+  render(<TopTalkers alerts={[alert({ count: 4 }), alert({ src_ip: "10.0.0.5", dst_port: 443 })]} focus={null} onFocus={onFocus} />);
+  fireEvent.click(screen.getByRole("button", { name: /^port 443 / }));
+  expect(onFocus).toHaveBeenCalledWith({ kind: "port", value: "443", label: "port 443" });
+  expect(screen.getByRole("button", { name: /^10\.0\.0\.9 4 detections/ })).toBeTruthy();
+});
+
+test("talkers: clicking the selected talker clears the focus", () => {
+  const onFocus = vi.fn();
+  render(<TopTalkers alerts={[alert()]} focus={{ kind: "source", value: "10.0.0.9", label: "10.0.0.9" }} onFocus={onFocus} />);
+  const button = screen.getByRole("button", { name: /^10\.0\.0\.9 / });
+  expect(button.getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(button);
+  expect(onFocus).toHaveBeenCalledWith(null);
+});
+
+test("talkers: says so when there are no detections", () => {
+  render(<TopTalkers alerts={[]} focus={null} onFocus={() => {}} />);
+  expect(screen.getByText("No detections in this view yet.")).toBeTruthy();
 });
