@@ -125,10 +125,25 @@ test("capture: flows and both drop shares, kernel drops flagged above 5%", () =>
   expect(screen.getByText("0%")).toBeTruthy();
   const kernel = screen.getByText("72.0%");
   expect(kernel.closest("dd")?.className).toContain("text-sev-high");
+  expect(screen.getByText(/above 5%: alert counts are undercounts/)).toBeTruthy();
 });
 
 test("capture: without stats yet, no flow or drop figures", () => {
   render(<TrafficChart points={[]} stale={false} health={null} />);
   expect(screen.getByRole("heading", { name: "Capture" })).toBeTruthy();
   expect(screen.queryByText("Active flows")).toBeNull();
+});
+
+test("capture: frozen panel says as of when its data ends and dims the figures", () => {
+  const { container } = render(<TrafficChart points={[{ time: "12:00:00", pps: 40 }]} stale={true} health={{ packets: 280, activeFlows: 12, queueDropped: 0, kernelDropped: 0 }} />);
+  expect(screen.getByText("as of 12:00:00")).toBeTruthy();
+  expect(container.querySelector("dl")!.className).toContain("opacity-50");
+});
+
+test("capture: kernel drops warn only above 5%, not at 5%", () => {
+  const { unmount } = render(<TrafficChart points={[]} stale={false} health={{ packets: 95, activeFlows: 1, queueDropped: 0, kernelDropped: 5 }} />);
+  expect(screen.getByText("5.0%").closest("dd")?.className).not.toContain("text-sev-high");
+  unmount();
+  render(<TrafficChart points={[]} stale={false} health={{ packets: 94, activeFlows: 1, queueDropped: 0, kernelDropped: 6 }} />);
+  expect(screen.getByText("6.0%").closest("dd")?.className).toContain("text-sev-high");
 });

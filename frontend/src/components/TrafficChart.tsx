@@ -5,13 +5,14 @@ export type TrafficPoint = { time: string; pps: number };
 
 const INK = "#141414", MUTED = "#575757", HAIRLINE = "#d6d6d4"; // index.css tokens; Recharts needs literal colours
 
-function Figure({ label, value, warn = false, title }: { label: string; value: string; warn?: boolean; title: string }) {
+function Figure({ label, value, warn = false, note = "", title }: { label: string; value: string; warn?: boolean; note?: string; title: string }) {
   return (
     <div title={title}>
       <dt className="text-xs text-muted">{label}</dt>
       {/* keyed by value: each change ticks in, like the band's counts */}
       <dd className={`font-mono text-sm ${warn ? "font-semibold text-sev-high" : ""}`}>
         <span key={value} className="count-tick">{value}</span>
+        {warn && <span className="sr-only">{note}</span>}
       </dd>
     </div>
   );
@@ -21,7 +22,7 @@ function Figure({ label, value, warn = false, title }: { label: string; value: s
  *  much traffic never reached the detectors). When stats stop arriving it dims and says when its data ends. */
 export default function TrafficChart({ points, stale, health }: { points: TrafficPoint[]; stale: boolean; health: Health | null }) {
   const latest = points.length ? points[points.length - 1] : null;
-  const label = latest === null ? "waiting for data" : stale ? `stopped at ${latest.time}` : `${Math.round(latest.pps).toLocaleString()} packets/s now`;
+  const label = latest === null ? "waiting for data" : stale ? `as of ${latest.time}` : `${Math.round(latest.pps).toLocaleString()} packets/s now`;
   const kernel = health ? dropShare(health.kernelDropped, health) : 0;
   return (
     <section className="ink-panel bg-surface p-4" aria-labelledby="traffic-heading">
@@ -53,6 +54,7 @@ export default function TrafficChart({ points, stale, health }: { points: Traffi
             label="Kernel drops"
             value={formatShare(kernel)}
             warn={kernel > KERNEL_DROP_WARN}
+            note={`, above ${KERNEL_DROP_WARN}%: alert counts are undercounts`}
             title={`${health.kernelDropped.toLocaleString("en-US")} packets the kernel dropped before SentinelStream read them; above ${KERNEL_DROP_WARN}%, alert counts are undercounts`}
           />
         </dl>
