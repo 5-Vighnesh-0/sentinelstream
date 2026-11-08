@@ -8,6 +8,7 @@ colors:
   ink: "#141414"
   muted: "#575757"
   hairline: "#d6d6d4"
+  frame: "#e4e4e1"
   edge: "#8c8c8c"
   accent: "#141414"
   accent-tint: "#ececea"
@@ -179,7 +180,7 @@ Every alert reads as a bulletin in effect. Its level comes first, as a word plus
 
 The top of the page is a clean white masthead strip (wordmark, view tabs, connection status). Under it sits the ink band, a full-bleed charcoal wash where the in-effect counts are the headline, set huge in a display face. While a High is in effect the seal floods across the band from the left. Below the band is a 2:1 grid with the alert table on the left and a stack of evidence panels on the right. State is carried by form as well as tone. A solid chip means in effect and an outline chip means expired, a draining rail counts down the window, and a row whose count grew stays lit until someone looks at it. Every number in the data is mono, and every score names the detector that produced it. A fact about the capture (demo mode on loopback) is set as the band's caption, below the counts, in the band's quiet text; the selected view tab is inked and unselected tabs are muted text that turn ink on a sunk hover.
 
-Brushwork is visible but rare, and never on data. It lives in two places: the ink band (grain and torn edge) and the Alerts panel, whose frame is a 2.5px ink stroke drawn on a separate layer run through an SVG displacement filter, so its edge looks inked while the table stays crisp. Every other panel has a plain hairline frame, and headings carry no strokes. Light only. Public Sans, JetBrains Mono and Montserrat are self-hosted, icons are lucide-react, motion is GSAP, and nothing loads from outside (strict CSP; the textures are inline SVG filters).
+Brushwork is visible but rare, and never on data. It lives in two places: the ink band (grain and torn edge) and the Alerts panel, whose frame is a 2.5px ink stroke drawn on a separate layer run through an SVG displacement filter, so its edge looks inked while the table stays crisp. Every other panel has a plain frame (`frame`, lighter than a hairline), and headings carry no strokes. Light only. Public Sans, JetBrains Mono and Montserrat are self-hosted, icons are lucide-react, motion is GSAP, and nothing loads from outside (strict CSP; the textures are inline SVG filters).
 
 **Key Characteristics:**
 - Warm paper page, white panels in hairline frames (the Alerts panel alone in a brushed ink frame), ink text, no shadows.
@@ -204,7 +205,8 @@ Achromatic warm greys from paper to ink, plus one vermilion seal and its tint an
 - **Sunk Wash** (`sunk`): detail well, hover ground for neutral icon buttons and Choose file, offline pill and banner, disabled primary fill.
 - **Ink** (`ink`): text, the Alerts panel's brushed frame, the Choose file button's border, both chart series, bar labels.
 - **Ash** (`muted`): secondary text, expired-row text, axis ticks.
-- **Hairline** (`hairline`): panel frames, masthead rule, the table header rule, the traffic chart grid, outline chips, rail track.
+- **Frame** (`frame`, #e4e4e1, 1.28:1 on white): panel frames only, a whisper so the page reads as panels, not a grid of boxes.
+- **Hairline** (`hairline`): masthead rule, the table header rule, the traffic chart grid, outline chips, rail track.
 - **Edge** (`edge`): borders on inputs and selects, rings on quiet bordered buttons, scrollbars, the frozen rail (3.3:1 on white).
 - **Charcoal Band** (`band`), **Band Text** (`band-text`), **Band Ash** (`band-muted`): the ink band's ground, its text, and its quiet text (empty counts, the expired note). When the band floods, quiet text turns white, because grey on vermilion falls below 4.5:1.
 - **Severity washes**: Medium is a grey wash with a 1px inset `sev-medium` ring, so it holds its edge against the white panel (`sev-medium-tint` with `sev-medium-ink`; `sev-medium` for its icon and rail). Low is an ink outline on white (a 1px inset ink ring; `sev-low` for its icon and rail, `sev-low-tint` kept with `sev-low-ink`). The "no model loaded" banner uses the Medium pair.
@@ -250,7 +252,7 @@ The masthead is a full-width white strip over a hairline rule. Its content is a 
 
 Below the band, the page is the same 1440px column with 16px padding (24px horizontal from 640px) and a 16px vertical stack. From 1024px the main grid splits `minmax(0,2fr) minmax(0,1fr)`: the alert timeline above the alerts on the left; on the right, a 16px stack of the attack map, Capture (hidden on upload tabs), top talkers, attack types, upload and muted patterns. Below that the grid is one column. `grid-cols-1` is required so the table cannot widen the column on phones.
 
-From 1280px the alert table has six columns: Level | Attack | Source → destination | Repeats | Evidence | Last activity. Below 1280px each row becomes a two-line grid (level, attack, time, then endpoints and evidence), with the header kept for screen readers only, so nothing time-critical is cut off. Panels pad 16px, the token form pads 24px, controls pad 8 to 12px, and the gap between chips and buttons is 8px.
+The Alerts panel's title row carries Export CSV and the "?" keys list on its right; the filters sit on their own row below. The feed shows 25 rows at a time with a full-width "Show 25 more" bar under the table (up to the 200 it holds), so it ends near the evidence column instead of running screens past it. From 1280px the alert table has six columns: Level | Attack | Source → destination | Repeats | Evidence | Last activity. Below 1280px each row becomes a two-line grid (level, attack, time, then endpoints and evidence), with the header kept for screen readers only, so nothing time-critical is cut off. Panels pad 16px, the token form pads 24px, controls pad 8 to 12px, and the gap between chips and buttons is 8px.
 
 ## Elevation & Depth
 
@@ -282,7 +284,7 @@ Nearly square. Panel frames and primary-button fills have a 2px radius; the Aler
 - **Corner Style:** 2px, brushed.
 - **Background:** white on paper.
 - **Shadow Strategy:** none (see Elevation & Depth).
-- **Border:** a 1px hairline. The Alerts panel instead draws a 2.5px ink border on a separate layer through `#ink-brush`.
+- **Border:** a 1px `frame` line. The Alerts panel instead draws a 2.5px ink border on a separate layer through `#ink-brush`.
 - **Internal Padding:** 16px. Panel titles are 18px semibold, plus an optional 14px muted line below.
 - **Upload panel:** no drop box. The whole panel takes a dropped file (its ground turns accent-tint and the line reads "Drop it here to choose it."). One wrapping row: a bordered Choose file button, the chosen name in mono (or "No file chosen" in muted), and the primary Analyse button, shown only once a valid file is chosen.
 
@@ -310,8 +312,8 @@ A white 6px card in a sunk well under its row. Labelled segments sit in a 2-colu
 ### Charts
 Every chart sits straight on its panel, with no box or ground, and every mark is linear in its value from zero: no perspective, no 3D, no log or root scales. Depth comes from layering and motion only. Each panel's description says its scope ("across the N alerts in this view"), because the dashboard holds the latest 200 live alerts (500 per upload), not the whole database.
 
-- **Capture:** the packets/s line (1.75px, straight segments, hairline grid, no animation: the 60 s window sliding is the motion), then three mono figures under a row rule: active flows, queue drops and kernel drops, each drop a share of everything that arrived (processed + queue drops + kernel drops). Kernel drops above 5% turn vermilion and semibold, with a spoken note. The figures update in place, with no tick (they change every second). Frozen, the panel dims to 50% and its label reads "as of HH:MM:SS". Hidden on upload tabs.
-- **Alert timeline:** 80px of buckets, new alerts per minute (per 2 minutes below 640px) over the last hour, or over an upload's own span. Each bucket stacks High (vermilion, at the bottom), Medium (charcoal) and Low (grey). New buckets rise from the baseline (`tl-grow`, 0.5s); the current one breathes (`tl-now`, 2s). The scope line adds "older alerts not loaded" when the backend holds more than the view.
+- **Capture:** the packets/s line (1.75px, straight segments, hairline grid, no animation: the 60 s window sliding is the motion; the y-axis steps are round whole numbers with the top above the peak), then three mono figures under a row rule: active flows, queue drops and kernel drops, each drop a share of everything that arrived (processed + queue drops + kernel drops). Kernel drops above 5% turn vermilion and semibold, with a spoken note. The figures update in place, with no tick (they change every second). Frozen, the panel dims to 50% and its label reads "as of HH:MM:SS". Hidden on upload tabs.
+- **Alert timeline:** 80px of buckets, new alerts per minute (per 2 minutes below 640px) over the last hour, or over an upload's own span. Each bucket stacks High (vermilion, at the bottom), Medium (charcoal) and Low (grey). New buckets rise from the baseline (`tl-grow`, 0.5s); the current one breathes (`tl-now`, 2s). The scope line adds "older alerts not loaded" when the backend holds more than the view. The time axis is labelled on one step, every quarter of the window (start and middle only on phones), so you can tell when things happened.
 - **Attack map:** sources (IP) left, services (IP:port) right, top 8 each plus a "+N more" node, one ink stroke per pair: weight linear in detections (4px for the heaviest, 0.75px floor), vermilion while a High on the pair is in effect, edge grey at 60% once all of it expired, expired strokes layered beneath. New strokes draw from source to target (GSAP stroke-dash, 0.8s `power2.out`, total stagger capped at 0.6s). Node labels are mono 12px buttons that truncate, with the count beside them.
 - **Top talkers:** top 5 sources and top 5 destination ports, mono 12px, each over a 2px ink bar on a hairline track.
 - **Attack types:** 16px ink bars with mono counts; when the ranking changes, rows slide to their new place (GSAP Flip, 0.45s `expo.out`) and bars ease to their new length (0.5s); counts tick.

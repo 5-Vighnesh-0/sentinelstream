@@ -1,5 +1,5 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { KERNEL_DROP_WARN, dropShare, formatShare, type Health } from "../insights";
+import { KERNEL_DROP_WARN, dropShare, formatShare, niceTicks, type Health } from "../insights";
 
 export type TrafficPoint = { time: string; pps: number };
 
@@ -24,6 +24,7 @@ export default function TrafficChart({ points, stale, health }: { points: Traffi
   const latest = points.length ? points[points.length - 1] : null;
   const label = latest === null ? "waiting for data" : stale ? `as of ${latest.time}` : `${Math.round(latest.pps).toLocaleString()} packets/s now`;
   const kernel = health ? dropShare(health.kernelDropped, health) : 0;
+  const ticks = niceTicks(Math.max(0, ...points.map((p) => p.pps)));
   return (
     <section className="ink-panel bg-surface p-4" aria-labelledby="traffic-heading">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
@@ -35,7 +36,7 @@ export default function TrafficChart({ points, stale, health }: { points: Traffi
           <LineChart data={points} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
             <CartesianGrid vertical={false} stroke={HAIRLINE} />
             <XAxis dataKey="time" tick={{ fill: MUTED, fontSize: 12, fontFamily: "JetBrains Mono Variable, monospace" }} tickLine={false} axisLine={{ stroke: HAIRLINE }} minTickGap={48} padding={{ left: 12 }} tickMargin={6} />
-            <YAxis tick={{ fill: MUTED, fontSize: 12, fontFamily: "JetBrains Mono Variable, monospace" }} tickLine={false} axisLine={false} width={44} allowDecimals={false} tickCount={4} interval={0} />
+            <YAxis tick={{ fill: MUTED, fontSize: 12, fontFamily: "JetBrains Mono Variable, monospace" }} tickLine={false} axisLine={false} width={44} domain={[0, ticks[ticks.length - 1]]} ticks={ticks} interval={0} />
             <Tooltip formatter={(v) => [Math.round(Number(v)).toLocaleString(), "packets/s"]} cursor={{ stroke: HAIRLINE }} />
             {/* No animation: the 60 s window slides one sample a second, which is the motion. */}
             <Line type="linear" /* samples are 1 s apart: draw straight between them, never a curve through values nobody measured */ dataKey="pps" stroke={INK} strokeWidth={1.75} dot={false} isAnimationActive={false} />

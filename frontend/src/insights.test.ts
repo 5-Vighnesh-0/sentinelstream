@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import type { AlertItem } from "./components/AlertFeed";
 import {
-  MORE, attackMap, dropShare, endpoint, formatShare, linkTone, matchesFocus, matchesSearch, timeline, timelineWindow, topTalkers,
+  MORE, attackMap, dropShare, endpoint, formatShare, linkTone, matchesFocus, matchesSearch, niceTicks, timeline, timelineWindow, topTalkers,
 } from "./insights";
 
 const T0 = Date.parse("2026-11-03T12:00:00.000Z");
@@ -113,4 +113,12 @@ test("drop share is a share of everything that arrived, never blank", () => {
   expect(formatShare(dropShare(1, { packets: 0, activeFlows: 0, queueDropped: 0, kernelDropped: 0 }))).toBe("0%");
   expect(formatShare(0.05)).toBe("<0.1%");
   expect(formatShare(71.64)).toBe("71.6%");
+});
+
+test("niceTicks steps round and whole, with the top above the maximum", () => {
+    expect(niceTicks(165)).toEqual([0, 50, 100, 150, 200]);
+    expect(niceTicks(7)).toEqual([0, 2, 4, 6, 8]);
+    expect(niceTicks(8)).toEqual([0, 5, 10, 15, 20]);
+    expect(niceTicks(0)).toEqual([0, 1, 2, 3, 4]);
+    expect(niceTicks(4_000)).toEqual([0, 2_000, 4_000, 6_000, 8_000]);
 });

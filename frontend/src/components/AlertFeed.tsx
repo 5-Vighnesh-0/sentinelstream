@@ -58,6 +58,9 @@ gsap.registerPlugin(Flip);
 
 const SEEN_AFTER_MS = 700; // a pointer passing over a row is not reading it
 
+/** Rows per page: a full feed ran four screens past the panels beside it. */
+const PAGE = 25;
+
 const KEYS: [string, string][] = [
   ["/", "Search"],
   ["j / k", "Next / previous alert"],
@@ -197,7 +200,9 @@ export default function AlertFeed(props: Props) {
         .sort((a, b) => Date.parse(b.last_seen) - Date.parse(a.last_seen)),
     [alerts, severity, attackType, activeOnly, clock, needsAttention, query, props.focus],
   );
-  const shown = matching.slice(0, FEED_LIMIT);
+  const [limit, setLimit] = useState(PAGE);
+  const shown = matching.slice(0, Math.min(limit, FEED_LIMIT));
+  const more = Math.min(matching.length, FEED_LIMIT) - shown.length;
   const firstExpired = captureTime ? -1 : shown.findIndex((a) => !inEffect(a, clock));
   const filtered = severity !== "all" || attackType !== "all" || activeOnly || needsAttention || props.showMuted || query.trim() !== "" || props.focus !== null;
   const toggleButton = (pressed: boolean) =>
@@ -267,8 +272,8 @@ export default function AlertFeed(props: Props) {
 
   return (
     <section className="ink-panel ink-panel-brush bg-surface" aria-labelledby="alerts-heading">
-      <div className="flex flex-wrap items-end gap-3 px-4 pt-4 pb-3">
-        <div className="mr-auto">
+      <div className="flex items-start gap-2 px-4 pt-4">
+        <div className="mr-auto min-w-0">
           <h2 id="alerts-heading" className="text-lg font-semibold">Alerts</h2>
           <p className="text-sm text-muted">
             Showing {shown.length.toLocaleString("en-US")} of {matching.length.toLocaleString("en-US")}
@@ -286,6 +291,32 @@ export default function AlertFeed(props: Props) {
             </button>
           )}
         </div>
+        <button
+          type="button"
+          disabled={matching.length === 0}
+          onClick={() => downloadCsv(matching, props.exportName)}
+          className="min-h-9 shrink-0 rounded px-3 text-sm font-medium text-accent ring-1 ring-edge hover:bg-accent-tint disabled:text-muted disabled:ring-hairline"
+        >
+          Export CSV
+        </button>
+        <details className="relative shrink-0">
+          <summary
+            aria-label="Keyboard shortcuts"
+            className="flex min-h-9 min-w-9 cursor-pointer list-none items-center justify-center rounded text-sm font-semibold text-accent ring-1 ring-edge hover:bg-accent-tint"
+          >
+            ?
+          </summary>
+          <dl className="absolute right-0 z-10 mt-2 grid w-60 grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 rounded-md border border-hairline bg-surface p-3 text-xs">
+            {KEYS.map(([key, what]) => (
+              <Fragment key={key}>
+                <dt><kbd className="font-mono font-semibold">{key}</kbd></dt>
+                <dd className="text-muted">{what}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </details>
+      </div>
+      <div className="flex flex-wrap items-end gap-3 px-4 pt-3 pb-3">
         <label className="flex flex-col text-xs font-medium text-muted">
           Search
           <input
@@ -339,30 +370,6 @@ export default function AlertFeed(props: Props) {
             Clear filters
           </button>
         )}
-        <button
-          type="button"
-          disabled={matching.length === 0}
-          onClick={() => downloadCsv(matching, props.exportName)}
-          className="min-h-9 rounded px-3 text-sm font-medium text-accent ring-1 ring-edge hover:bg-accent-tint disabled:text-muted disabled:ring-hairline"
-        >
-          Export CSV
-        </button>
-        <details className="relative">
-          <summary
-            aria-label="Keyboard shortcuts"
-            className="flex min-h-9 min-w-9 cursor-pointer list-none items-center justify-center rounded text-sm font-semibold text-accent ring-1 ring-edge hover:bg-accent-tint"
-          >
-            ?
-          </summary>
-          <dl className="absolute right-0 z-10 mt-2 grid w-60 grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 rounded-md border border-hairline bg-surface p-3 text-xs">
-            {KEYS.map(([key, what]) => (
-              <Fragment key={key}>
-                <dt><kbd className="font-mono font-semibold">{key}</kbd></dt>
-                <dd className="text-muted">{what}</dd>
-              </Fragment>
-            ))}
-          </dl>
-        </details>
       </div>
       <div className="feed-scroll overflow-x-auto">
         <table className="w-full text-left text-sm">
@@ -425,6 +432,15 @@ export default function AlertFeed(props: Props) {
           </p>
         )}
       </div>
+      {more > 0 && (
+        <button
+          type="button"
+          onClick={() => setLimit((n) => n + PAGE)}
+          className="min-h-11 w-full border-t border-row text-sm font-medium text-accent hover:bg-accent-tint"
+        >
+          Show {Math.min(PAGE, more)} more <span className="text-muted">of {more.toLocaleString("en-US")} not shown</span>
+        </button>
+      )}
     </section>
   );
 }

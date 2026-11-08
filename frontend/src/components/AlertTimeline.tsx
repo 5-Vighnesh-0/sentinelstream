@@ -70,9 +70,13 @@ export default memo(function AlertTimeline({ alerts, clock, capture, focus, onFo
               );
             })}
           </div>
-          <div className="mt-1 flex justify-between border-t border-hairline pt-1 font-mono text-xs text-muted">
-            <span>{clockTime(buckets[0].start, capture)}</span>
-            <span>{capture ? clockTime(end, capture) : "now"}</span>
+          {/* Labels on one step (quarters) so you can tell when things happened, not only where the window ends. */}
+          <div className="relative mt-1 h-5 border-t border-hairline pt-1 font-mono text-xs text-muted">
+            {[0, ...(narrow ? (capture ? [] : [0.5]) : [0.25, 0.5, 0.75])].map((f) => {
+              const i = Math.round(f * buckets.length);
+              return <span key={f} className="absolute" style={{ left: `${(i / buckets.length) * 100}%` }}>{clockTime(buckets[i].start, capture)}</span>;
+            })}
+            <span className="absolute right-0">{capture ? clockTime(end, capture) : "now"}</span>
           </div>
         </>
       )}
