@@ -53,8 +53,8 @@ export default memo(function AttackMap({ alerts, clock, capture, focus, onFocus 
       <button
         key={n.key}
         type="button"
-        title={`${n.key}: ${n.count.toLocaleString("en-US")} detections`}
-        aria-label={`${n.key} ${n.count} detections`}
+        title={`${n.key}: ${n.count.toLocaleString("en-US")} ${n.count === 1 ? "detection" : "detections"}`}
+        aria-label={`${n.key} ${n.count} ${n.count === 1 ? "detection" : "detections"}`}
         aria-pressed={selected}
         onClick={() => onFocus(selected ? null : { kind: side, value: n.key, label: n.key })}
         className={`flex h-7 min-w-0 items-center gap-1.5 rounded px-1 font-mono text-[12px] ${side === "service" ? "flex-row-reverse" : ""} ${selected ? "bg-accent text-white" : "hover:bg-sunk"}`}

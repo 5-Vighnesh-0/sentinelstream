@@ -14,7 +14,7 @@ export default memo(function TopTalkers({ alerts, focus, onFocus }: Props) {
     return (
       <div className="min-w-0">
         <h3 className="text-xs font-medium text-muted">{title}</h3>
-        <ol className="mt-1 space-y-0.5">
+        <ol role="list" className="mt-1 space-y-0.5">
           {items.map((t) => {
             const label = kind === "port" ? `port ${t.value}` : t.value;
             const selected = focus !== null && focus.kind === kind && focus.value === t.value;
@@ -22,9 +22,9 @@ export default memo(function TopTalkers({ alerts, focus, onFocus }: Props) {
               <li key={t.value}>
                 <button
                   type="button"
-                  aria-label={`${label} ${t.count} detections`}
+                  aria-label={`${label} ${t.count} ${t.count === 1 ? "detection" : "detections"}`}
                   aria-pressed={selected}
-                  title={`${label}: ${t.count.toLocaleString("en-US")} detections`}
+                  title={`${label}: ${t.count.toLocaleString("en-US")} ${t.count === 1 ? "detection" : "detections"}`}
                   onClick={() => onFocus(selected ? null : { kind, value: t.value, label })}
                   className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded px-1 py-1 text-left font-mono text-[12px] ${selected ? "bg-accent text-white" : "hover:bg-sunk"}`}
                 >

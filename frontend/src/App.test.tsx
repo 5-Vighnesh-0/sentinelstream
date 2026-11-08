@@ -149,3 +149,25 @@ test("switching to an upload's tab clears the filters, so a stale filter can't h
   expect((screen.getByLabelText("Severity") as HTMLSelectElement).value).toBe("all");
   expect(screen.getByText("In this capture")).toBeTruthy();
 });
+
+test("one shared focus: talkers, then map, then the chip's remove button", async () => {
+  localStorage.setItem("sentinelstream.token", "t0k");
+  vi.stubGlobal("fetch", api());
+  render(<App />);
+  act(() => {
+    for (const [id, src_ip, dst_port] of [["f1", "10.0.0.1", 22], ["f2", "10.0.0.2", 80]] as const) {
+      FakeWS.last.onmessage?.({ data: JSON.stringify({ type: "alert", data: liveAlert({ id, src_ip, dst_port }) }) });
+    }
+  });
+  const rows = () => document.querySelectorAll("[data-alert]").length;
+  await waitFor(() => expect(rows()).toBe(2));
+  fireEvent.click(screen.getAllByRole("button", { name: /^10\.0\.0\.1 1 detection/ })[0]);
+  expect(rows()).toBe(1);
+  expect(screen.getByRole("button", { name: "Remove filter 10.0.0.1" })).toBeTruthy();
+  fireEvent.click(screen.getAllByRole("button", { name: /^:80 1 detection|^80 1 detection|^port 80 1 detection/ })[0]);
+  expect(screen.queryByRole("button", { name: "Remove filter 10.0.0.1" })).toBeNull();
+  expect(rows()).toBe(1);
+  fireEvent.click(screen.getByRole("button", { name: /^Remove filter/ }));
+  expect(rows()).toBe(2);
+  expect(screen.queryByRole("button", { name: /^Remove filter/ })).toBeNull();
+});

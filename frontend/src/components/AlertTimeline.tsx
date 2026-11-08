@@ -18,11 +18,11 @@ function useNarrow() {
 
 const FILL = { high: "bg-sev-high", medium: "bg-sev-medium", low: "bg-sev-low" } as const;
 
-type Props = { alerts: AlertItem[]; clock: number; capture: boolean; focus: Focus | null; onFocus: (focus: Focus | null) => void };
+type Props = { alerts: AlertItem[]; clock: number; capture: boolean; focus: Focus | null; onFocus: (focus: Focus | null) => void; partial?: boolean };
 
 /** New alerts per bucket, stacked High at the bottom. Heights are linear from zero, so a bar's size is its count.
  *  Bars grow in as buckets open; the current one breathes. Each busy bar narrows the feed to its time. */
-export default memo(function AlertTimeline({ alerts, clock, capture, focus, onFocus }: Props) {
+export default memo(function AlertTimeline({ alerts, clock, capture, focus, onFocus, partial = false }: Props) {
   const narrow = useNarrow();
   const { end, size, count } = timelineWindow(alerts, !capture, clock, narrow);
   const buckets = timeline(alerts, end, size, count);
@@ -36,7 +36,7 @@ export default memo(function AlertTimeline({ alerts, clock, capture, focus, onFo
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 id="timeline-heading" className="text-lg font-semibold">Alert timeline</h2>
         <span className="text-sm text-muted">
-          New alerts per {per}, {capture ? "across this capture" : "last hour"}, from the {alerts.length.toLocaleString("en-US")} {alerts.length === 1 ? "alert" : "alerts"} in this view · peak {peak}
+          New alerts per {per}, {capture ? "across this capture" : "last hour"}, from the {alerts.length.toLocaleString("en-US")} {alerts.length === 1 ? "alert" : "alerts"} in this view · peak {peak}{partial && " · older alerts not loaded"}
         </span>
       </div>
       {peak === 0 ? (

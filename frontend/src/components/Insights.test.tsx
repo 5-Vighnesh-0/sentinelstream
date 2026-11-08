@@ -166,3 +166,12 @@ test("attack types: says so when there are no detections", () => {
   render(<AttackDistribution alerts={[]} />);
   expect(screen.getByText("No detections in this view yet.")).toBeTruthy();
 });
+
+test("timeline: says when older alerts were not loaded", () => {
+  const props = { alerts: [alert()], clock: T0 + 30_000, capture: false, focus: null, onFocus: () => {} };
+  const { unmount } = render(<AlertTimeline {...props} partial />);
+  expect(screen.getByText(/· older alerts not loaded/)).toBeTruthy();
+  unmount();
+  render(<AlertTimeline {...props} />);
+  expect(screen.queryByText(/older alerts not loaded/)).toBeNull();
+});

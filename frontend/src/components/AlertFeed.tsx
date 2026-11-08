@@ -233,15 +233,20 @@ export default function AlertFeed(props: Props) {
   }
 
   // Shortcuts read the latest rows through a ref, so the listener is bound once.
-  const latest = useRef({ shown, openId, onAck: props.onAck });
-  latest.current = { shown, openId, onAck: props.onAck };
+  const latest = useRef({ shown, openId, onAck: props.onAck, close });
+  latest.current = { shown, openId, onAck: props.onAck, close };
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       if (e.ctrlKey || e.metaKey || e.altKey || target.closest?.("input, select, textarea, [contenteditable='true']")) return;
       const rows = [...(body.current?.querySelectorAll<HTMLElement>("[data-alert]") ?? [])];
-      const at = rows.indexOf(document.activeElement as HTMLElement);
-      if (e.key === "/") {
+      let at = rows.indexOf(document.activeElement as HTMLElement);
+      // focus is on the details (or elsewhere): carry on from the open row, not the top
+      if (at === -1) at = rows.findIndex((r) => r.dataset.alert === latest.current.openId);
+      if (e.key === "Escape") {
+        // inside the details their own handler already closes
+        if (latest.current.openId && !e.defaultPrevented && !target.closest?.("[aria-labelledby^='detail-']")) latest.current.close();
+      } else if (e.key === "/") {
         e.preventDefault();
         search.current?.focus();
       } else if ((e.key === "j" || e.key === "k") && rows.length) {

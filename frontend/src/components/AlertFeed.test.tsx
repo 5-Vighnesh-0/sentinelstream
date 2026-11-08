@@ -192,3 +192,20 @@ test("shortcuts do nothing while typing in the search box", () => {
   fireEvent.keyDown(search, { key: "j" });
   expect(document.activeElement).toBe(search);
 });
+
+test("j after opening details moves to the next row, not the top", () => {
+  render(<Feed alerts={makeAlerts(3)} />);
+  const buttons = () => [...document.querySelectorAll<HTMLElement>("[data-alert]")];
+  fireEvent.click(buttons()[1]);
+  fireEvent.keyDown(screen.getByRole("heading", { name: /details/ }), { key: "j" });
+  expect(document.activeElement).toBe(buttons()[2]);
+});
+
+test("Escape on the page closes open details once focus has left them", () => {
+  render(<Feed alerts={makeAlerts(3)} />);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-alert]")!);
+  fireEvent.keyDown(screen.getByRole("heading", { name: /details/ }), { key: "j" });
+  expect(screen.queryByRole("heading", { name: /details/ })).toBeTruthy();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  expect(screen.queryByRole("heading", { name: /details/ })).toBeNull();
+});

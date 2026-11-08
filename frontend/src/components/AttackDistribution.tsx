@@ -38,10 +38,10 @@ export default memo(function AttackDistribution({ alerts }: { alerts: AlertItem[
       {data.length === 0 ? (
         <p className="py-4 text-sm text-muted">No detections in this view yet.</p>
       ) : (
-        <ol ref={list} className="space-y-2">
+        <ol ref={list} role="list" className="space-y-2">
           {data.map((d) => (
             <li key={d.type} data-flip-id={d.type} className="grid grid-cols-[6rem_minmax(0,1fr)_3.5rem] items-center gap-x-3">
-              <span className="truncate text-right text-xs text-muted">{d.type}</span>
+              <span title={d.type} className="truncate text-right text-xs text-muted">{d.type}</span>
               <span aria-hidden className="block h-4">
                 <span
                   className="block h-full origin-left bg-ink transition-transform duration-500 ease-out motion-reduce:transition-none"
