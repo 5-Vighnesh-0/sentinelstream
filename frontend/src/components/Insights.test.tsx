@@ -3,6 +3,7 @@ import gsap from "gsap";
 import { afterEach, expect, test, vi } from "vitest";
 import type { AlertItem } from "./AlertFeed";
 import AlertTimeline from "./AlertTimeline";
+import AttackDistribution from "./AttackDistribution";
 import AttackMap from "./AttackMap";
 import TopTalkers from "./TopTalkers";
 import TrafficChart from "./TrafficChart";
@@ -146,4 +147,22 @@ test("capture: kernel drops warn only above 5%, not at 5%", () => {
   unmount();
   render(<TrafficChart points={[]} stale={false} health={{ packets: 94, activeFlows: 1, queueDropped: 0, kernelDropped: 6 }} />);
   expect(screen.getByText("6.0%").closest("dd")?.className).toContain("text-sev-high");
+});
+
+test("attack types: one row per type, most detections first, counting repeats", () => {
+  render(<AttackDistribution alerts={[alert({ attack_type: "DoS", count: 2 }), alert({ attack_type: "anomaly", count: 5 })]} />);
+  const rows = screen.getAllByRole("listitem");
+  expect(rows.map((r) => r.textContent)).toEqual(["Anomaly5", "DoS2"]);
+});
+
+test("attack types: bars are linear from zero, scaled to the largest type", () => {
+  render(<AttackDistribution alerts={[alert({ attack_type: "DoS", count: 4 }), alert({ attack_type: "PortScan", count: 1 })]} />);
+  const bars = screen.getAllByRole("listitem").map((r) => r.querySelector<HTMLElement>("[aria-hidden] > span")!);
+  expect(bars[0].style.transform).toBe("scaleX(1)");
+  expect(bars[1].style.transform).toBe("scaleX(0.25)");
+});
+
+test("attack types: says so when there are no detections", () => {
+  render(<AttackDistribution alerts={[]} />);
+  expect(screen.getByText("No detections in this view yet.")).toBeTruthy();
 });
