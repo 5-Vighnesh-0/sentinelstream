@@ -47,6 +47,20 @@ Consequence: benchmark numbers describe the models on CICIDS2017 CSV features, n
 - Trained on one day (Monday) of one lab network. "Normal" on another network will differ. Measured in Phase 2: a KDE audio-visualizer widget streaming 60 fps over a loopback WebSocket had every 10 s slice flagged (358 alerts/hour); the other ~250 flows in 30 minutes raised none.
 - On loopback every program shares 127.0.0.1, so the scan rule sees all local programs as one source.
 
+## Live false-positive rate
+
+Measured on 2026-11-03: two back-to-back 1-hour runs of `python -m backend.pipeline --duration 3600` on one laptop during normal desktop use, with no simulator. Every alert counts as a false positive, with the caveat that real traffic is not guaranteed benign. Counts are raw pipeline output (mutes do not apply there). Command and summary lines: PROGRESS.md, sub-project 3.
+
+| Interface | Packets read | Flows scored | Random Forest alerts/hour | Isolation Forest alerts/hour | Kernel-dropped packets |
+|---|---|---|---|---|---|
+| `wlp6s0` (Wi-Fi) | 103,115 | 4,448 | 220 | 97 | 260,185 |
+| `lo` | 249,142 | 832 | 18 | 297 | 0 |
+
+- Together the detectors raised about 315 alerts an hour on either interface, one every ~11 s. That is too many for an unattended deployment; mutes (sub-project 3) are the analyst's tool for known-benign patterns.
+- On Wi-Fi most false positives came from the Random Forest, not only the Isolation Forest as in Phase 2. On loopback the Isolation Forest dominated.
+- The Wi-Fi rates are a floor: the kernel dropped 260,185 packets, about 72% of what arrived, before Python read them (see Capture and Docker), so most Wi-Fi traffic was never scored.
+- One laptop, one evening, one network: this is one sample, not a rate for other networks.
+
 ## Trust boundary and security
 
 - The REST and WebSocket API need a dashboard token, but it is a single shared secret: no users, no expiry, and anyone who can read `data/api-token` has it. The backend still binds `127.0.0.1:8000`; do not expose it on a network.

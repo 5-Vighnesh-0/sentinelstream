@@ -1014,3 +1014,32 @@ private vulnerability reporting enabled: true
 
 - The first local run of `scripts/e2e-demo.sh` used the default compose project, so its `down -v` removed the local demo's data volume (test alerts and the dashboard token, which regenerates). The script now uses its own project name, `sentinelstream-e2e`.
 - Branch protection is proven by this evidence PR: it could merge only after the six required checks passed.
+
+## Post-v1 sub-project 3: analyst features
+
+Spec: [docs/superpowers/specs/2026-10-31-analyst-features-design.md](docs/superpowers/specs/2026-10-31-analyst-features-design.md).
+
+### Tasks completed
+
+- Parts 1 and 2 (acknowledge, mute rules, upload history, CSV export; schema change human-approved): PR #9, merged as `f5e977e` on 2026-11-03 after the six required checks passed (python, frontend, docker, audit, trivy, e2e).
+- Part 3, live false-positive measurement: two 1-hour runs back to back, normal desktop use, no simulator. Results recorded in docs/LIMITATIONS.md and docs/EVALUATION.md; README unchanged (AGENTS rule 4).
+
+### Evidence — live false-positive measurement
+
+```
+sudo setpriv --reuid=1000 --regid=1000 --init-groups --inh-caps=+net_raw --ambient-caps=+net_raw \
+  sh -c '.venv/bin/python -m backend.pipeline --iface wlp6s0 --duration 3600; .venv/bin/python -m backend.pipeline --iface lo --duration 3600' \
+  2>&1 >/dev/null | tee data/fp-capture.log
+```
+
+Summary lines (first `wlp6s0`, then `lo`; the log has no warnings or errors):
+
+```
+2026-11-03 17:09:00,240 INFO summary {"elapsed_s": 3600.2, "packets": 103115, "flows_scored": 4448, "flows_unscored": 562, "dropped_packets": 0, "kernel_dropped_packets": 260185, "active_flows": 0, "evicted_flows": 0, "max_delay_s": 6.79, "alerts": {"random_forest": 220, "isolation_forest": 97}, "alerts_per_hour": {"random_forest": 220.0, "isolation_forest": 97.0}}
+2026-11-03 18:09:04,141 INFO summary {"elapsed_s": 3600.3, "packets": 249142, "flows_scored": 832, "flows_unscored": 5, "dropped_packets": 0, "kernel_dropped_packets": 0, "active_flows": 0, "evicted_flows": 0, "max_delay_s": 6.33, "alerts": {"random_forest": 18, "isolation_forest": 297}, "alerts_per_hour": {"random_forest": 18.0, "isolation_forest": 297.0}}
+```
+
+### Observations
+
+- The kernel dropped 260,185 packets on Wi-Fi against 103,115 read (about 72%), so the Wi-Fi rates are a floor. Python + Scapy capture remains the bottleneck noted in Phase 2.
+- On Wi-Fi the Random Forest raised more false positives (220/hour) than the Isolation Forest (97/hour); on loopback the Isolation Forest did (297 vs 18). Reducing both is sub-project 4 (detection quality) material.

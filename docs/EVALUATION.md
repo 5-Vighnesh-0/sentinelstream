@@ -1,6 +1,6 @@
 # Evaluation
 
-Every number in this file and in README.md comes from `backend/evaluation/benchmark.py`; full output, including the per-class table, per-day Isolation Forest false-positive rates and the held-out-family run, is in [benchmark/results.md](benchmark/results.md).
+Every number in this file and in README.md comes from `backend/evaluation/benchmark.py`, except the live false-positive rates, which come from `backend.pipeline` run summaries; full output, including the per-class table, per-day Isolation Forest false-positive rates and the held-out-family run, is in [benchmark/results.md](benchmark/results.md).
 
 ## Datasets
 
@@ -73,6 +73,17 @@ The port-scan rule needs source IPs and timestamps, which MachineLearningCSV doe
 ## Live default
 
 **Live default: Random Forest + port-scan rule + Isolation Forest** (human decision, Phase 5). Per flow, the Random Forest names the attack; only when it says benign can the Isolation Forest raise a `low`/`medium` `anomaly`; the scan rule works across flows. Why: the Random Forest carries detection on known attacks (F1 0.9595, PR-AUC 0.9922, ~4 ms per flow). The Isolation Forest adds almost nothing on CICIDS2017 attacks (recall 0.0005; 0.0000 on held-out PortScan) and caused every live false positive measured in Phase 2, but it is kept as the only net for patterns no training label covers, with its alerts capped at `medium` and merged by D4. The scan rule is the only detector that names a port scan reliably on live traffic.
+
+## Live false-positive rate
+
+Two 1-hour runs of `python -m backend.pipeline --duration 3600` during normal desktop use, no attacks (2026-11-03). Every alert is counted as a false positive.
+
+| Interface | Packets read | Flows scored | Random Forest alerts/hour | Isolation Forest alerts/hour | Kernel-dropped packets |
+|---|---|---|---|---|---|
+| `wlp6s0` (Wi-Fi) | 103,115 | 4,448 | 220 | 97 | 260,185 |
+| `lo` | 249,142 | 832 | 18 | 297 | 0 |
+
+The Wi-Fi rates are a floor (about 72% of packets were dropped in the kernel). Interpretation and caveats: [LIMITATIONS.md](LIMITATIONS.md#live-false-positive-rate).
 
 ## Caveats to report with results
 
