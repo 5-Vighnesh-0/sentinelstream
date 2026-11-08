@@ -36,7 +36,7 @@ export default memo(function AlertTimeline({ alerts, clock, capture, focus, onFo
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 id="timeline-heading" className="text-lg font-semibold">Alert timeline</h2>
         <span className="text-sm text-muted">
-          New alerts per {per}, {capture ? "across this capture" : "last hour"} · peak {peak}
+          New alerts per {per}, {capture ? "across this capture" : "last hour"}, from the {alerts.length.toLocaleString("en-US")} {alerts.length === 1 ? "alert" : "alerts"} in this view · peak {peak}
         </span>
       </div>
       {peak === 0 ? (

@@ -17,6 +17,7 @@ test("timeline: a bar per busy minute, and clicking one focuses the feed on it",
   const onFocus = vi.fn();
   render(<AlertTimeline alerts={[alert({ severity: "high" }), alert()]} clock={T0 + 30_000} capture={false} focus={null} onFocus={onFocus} />);
   const bar = screen.getByRole("button", { name: /2 new \(1 High, 0 Medium, 1 Low\)/ });
+  expect(screen.getByText(/from the 2 alerts in this view/)).toBeTruthy();
   fireEvent.click(bar);
   expect(onFocus).toHaveBeenCalledWith(expect.objectContaining({ kind: "minute", start: T0, end: T0 + 60_000 }));
 });
