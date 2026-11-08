@@ -63,10 +63,14 @@ function makeAlerts(n: number): AlertItem[] {
 
 const bodyRows = () => within(screen.getAllByRole("rowgroup")[1]).queryAllByRole("row").filter((r) => !r.textContent?.startsWith("Expired:"));
 
-test("renders at most the latest 200 of 1,000 alerts", () => {
+test("pages the feed 25 rows at a time, up to the latest 200 of 1,000 alerts", () => {
   render(<Feed alerts={makeAlerts(1000)} />);
+  expect(bodyRows()).toHaveLength(25);
+  expect(screen.getByText(/showing 25 of 1,000/i)).toBeTruthy();
+  for (let i = 0; i < 7; i++) fireEvent.click(screen.getByRole("button", { name: /^show 25 more/i }));
   expect(bodyRows()).toHaveLength(200);
   expect(screen.getByText(/showing 200 of 1,000/i)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /^show \d+ more/i })).toBeNull();
 }, 20_000); // jsdom draws 400 SVG icons slowly; the browser render is measured live
 
 test("severity is written out, not only a colour", () => {

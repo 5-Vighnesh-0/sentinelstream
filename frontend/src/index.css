@@ -12,6 +12,7 @@
   --color-ink: #141414;
   --color-muted: #575757;
   --color-hairline: #d6d6d4;
+  --color-frame: #e4e4e1; /* panel frames: a whisper (1.28:1 on white), so the page reads as panels, not a grid of boxes */
   --color-row: #ececea; /* table row rules: 3-7% darker than white, so rows read as rows, not a grid */
   --color-edge: #8c8c8c; /* input and drop-zone borders: 3.3:1 on white */
   --color-accent: #141414; /* pressables are inked */
@@ -108,7 +109,7 @@ li {
  * The inked edge is its own layer run through a displacement filter (InkDefs), so the data inside stays crisp. */
 .ink-panel {
   position: relative;
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-frame);
   border-radius: 2px;
 }
 

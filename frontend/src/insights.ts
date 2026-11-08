@@ -140,3 +140,11 @@ export function dropShare(dropped: number, h: Health): number {
 export function formatShare(pct: number): string {
   return pct === 0 ? "0%" : pct < 0.1 ? "<0.1%" : `${pct.toFixed(1)}%`;
 }
+
+/** Ticks for a count axis: `n` round, whole-number steps from zero, the top one above the maximum so the line never
+ *  touches the plot's edge. */
+export function niceTicks(max: number, n = 4): number[] {
+  const mag = Math.max(1, 10 ** Math.floor(Math.log10(Math.max(max, 1) / n)));
+  const step = [1, 2, 2.5, 5, 10].map((f) => f * mag).find((s) => s * n > max && Number.isInteger(s))!;
+  return Array.from({ length: n + 1 }, (_, i) => i * step);
+}
