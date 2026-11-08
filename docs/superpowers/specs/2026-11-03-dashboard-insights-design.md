@@ -19,7 +19,7 @@ The dashboard shows what is attacking what, when, and whether the capture itself
 
 1. **Alert timeline**, full width above the Alerts table. New alerts per minute (by first-seen `timestamp`) over the last 60 minutes, stacked High / Medium / Low (vermilion, charcoal, grey). Bars grow in as minutes pass; the current minute pulses. Clicking a minute sets the focus filter to it.
 2. **Attack map**, top of the right column. Sources (IP) on the left, targeted services (IP:port) on the right, at most 8 of each; the rest collapse into one "+N more" node per side. One ink stroke per source–service pair, its weight scaled by summed `count`; vermilion while a High on that pair is in effect, grey once every alert on it has expired. New links draw in with GSAP (stroke-dash). Clicking a node sets the focus filter to it. Hand-built SVG, no chart library.
-3. **Capture** panel (replaces "Packets per second"): the packets/s line, scrolling live, plus three figures: active flows, queue drops and kernel drops, each drop shown as a % of `packets + kernel_dropped_packets`. Kernel drops turn vermilion above 5%.
+3. **Capture** panel (replaces "Packets per second"): the packets/s line, scrolling live, plus three figures: active flows, queue drops and kernel drops, each drop shown as a % of `packets + dropped_packets + kernel_dropped_packets` (everything that arrived). Kernel drops turn vermilion above 5%.
 4. **Top talkers**: top 5 sources and top 5 destination ports by summed `count`, each with a thin inline bar. Clicking one sets the focus filter.
 5. **Search and keyboard**: a search box in the Alerts header matching IP, port or attack name (case-insensitive substring). `/` focuses search, `j`/`k` move between rows, Enter opens the row, `a` acknowledges or un-acknowledges it, Esc closes it. A "?" button lists the keys.
 6. **Animated charts**: Attack types becomes HTML bars that re-rank with GSAP Flip, like feed rows; counts roll to their new value.
@@ -34,7 +34,7 @@ Out of scope: three.js or any new dependency, new endpoints, schema changes, Geo
 
 - `App` keeps holding alerts. New `frontend/src/insights.ts` holds pure functions: `timeline(alerts, now, minutes)` → buckets of `{start, high, medium, low}`; `topTalkers(alerts, n)` → `{sources, ports}` ranked by summed `count`, ties by most recent `last_seen`; `attackMap(alerts, n)` → `{sources, services, links, moreSources, moreServices}`.
 - All three read the same filtered view as Attack types, so the panels always agree.
-- Backend: `stats` messages gain `packets` (int, cumulative since the backend started, counted where packets enter the capture queue). `docs/API_SPEC.md` changes in the same PR.
+- Backend: `stats` messages gain `packets` (int, cumulative since the backend started, counted as the pipeline processes them; queue and kernel drops are counted separately). `docs/API_SPEC.md` changes in the same PR.
 
 ### One focus filter
 

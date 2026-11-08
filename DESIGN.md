@@ -248,7 +248,7 @@ Achromatic warm greys from paper to ink, plus one vermilion seal and its tint an
 
 The masthead is a full-width white strip over a hairline rule. Its content is a centred column up to 1440px, 12px vertical padding, 16px horizontal (24px from 640px), as one wrapping flex row with a 32px column gap: wordmark, view tabs, status pill pushed right. The ink band runs full bleed directly under it, with its content in the same 1440px column (24px top, 36px bottom), and a 14px torn brush edge at its foot. Its counts sit in three equal columns divided by 15% white rules, and the first column has no left padding so the counts align with the page edge.
 
-Below the band, the page is the same 1440px column with 16px padding (24px horizontal from 640px) and a 16px vertical stack. From 1024px the main grid splits `minmax(0,2fr) minmax(0,1fr)`: alerts on the left, a 16px stack of the traffic chart, attack types, upload and muted patterns on the right. Below that the grid is one column. `grid-cols-1` is required so the table cannot widen the column on phones.
+Below the band, the page is the same 1440px column with 16px padding (24px horizontal from 640px) and a 16px vertical stack. From 1024px the main grid splits `minmax(0,2fr) minmax(0,1fr)`: the alert timeline above the alerts on the left; on the right, a 16px stack of the attack map, Capture (hidden on upload tabs), top talkers, attack types, upload and muted patterns. Below that the grid is one column. `grid-cols-1` is required so the table cannot widen the column on phones.
 
 From 1280px the alert table has six columns: Level | Attack | Source → destination | Repeats | Evidence | Last activity. Below 1280px each row becomes a two-line grid (level, attack, time, then endpoints and evidence), with the header kept for screen readers only, so nothing time-critical is cut off. Panels pad 16px, the token form pads 24px, controls pad 8 to 12px, and the gap between chips and buttons is 8px.
 
@@ -308,7 +308,16 @@ Expired rows mute their text, and one "Expired: no activity for 30 s" divider ro
 A white 6px card in a sunk well under its row. Labelled segments sit in a 2-column grid (3 from 640px) with hairline rules, a 12px muted label over a 14px value, and spans chosen so no row ends in an empty cell. Evidence always spells out its detector's meaning. Acknowledge is a primary button and Mute is a bordered quiet button.
 
 ### Charts
-Both charts sit straight on the panel, with no box or ground: muted 12px ticks and an ink series (a 1.75px straight-segment line over a hairline grid, or 16px bars with mono value labels and no grid). No legends, no animation, no colour. A stale traffic chart drops to 50% opacity and its label says when the data stopped.
+Every chart sits straight on its panel, with no box or ground, and every mark is linear in its value from zero: no perspective, no 3D, no log or root scales. Depth comes from layering and motion only. Each panel's description says its scope ("across the N alerts in this view"), because the dashboard holds the latest 200 live alerts (500 per upload), not the whole database.
+
+- **Capture:** the packets/s line (1.75px, straight segments, hairline grid, no animation: the 60 s window sliding is the motion), then three mono figures under a row rule: active flows, queue drops and kernel drops, each drop a share of everything that arrived (processed + queue drops + kernel drops). Kernel drops above 5% turn vermilion and semibold, with a spoken note. The figures update in place, with no tick (they change every second). Frozen, the panel dims to 50% and its label reads "as of HH:MM:SS". Hidden on upload tabs.
+- **Alert timeline:** 80px of buckets, new alerts per minute (per 2 minutes below 640px) over the last hour, or over an upload's own span. Each bucket stacks High (vermilion, at the bottom), Medium (charcoal) and Low (grey). New buckets rise from the baseline (`tl-grow`, 0.5s); the current one breathes (`tl-now`, 2s). The scope line adds "older alerts not loaded" when the backend holds more than the view.
+- **Attack map:** sources (IP) left, services (IP:port) right, top 8 each plus a "+N more" node, one ink stroke per pair: weight linear in detections (4px for the heaviest, 0.75px floor), vermilion while a High on the pair is in effect, edge grey at 60% once all of it expired, expired strokes layered beneath. New strokes draw from source to target (GSAP stroke-dash, 0.8s `power2.out`, total stagger capped at 0.6s). Node labels are mono 12px buttons that truncate, with the count beside them.
+- **Top talkers:** top 5 sources and top 5 destination ports, mono 12px, each over a 2px ink bar on a hairline track.
+- **Attack types:** 16px ink bars with mono counts; when the ranking changes, rows slide to their new place (GSAP Flip, 0.45s `expo.out`) and bars ease to their new length (0.5s); counts tick.
+
+### Focus filter and search
+Clicking a timeline bucket, a map node or a talker sets one focus (a minute, a source, a service or a port) and presses that control (ink fill, white text). The focus shows as an ink chip with an ×, under the Alerts title; it combines with the other filters and the search box (IP, port or attack name), and Clear filters or switching view removes it. Keys: `/` search, `j`/`k` next and previous row, Enter opens, `a` acknowledges or undoes, Esc closes; a "?" button lists them. Keys do nothing while typing in a field.
 
 ## Do's and Don'ts
 
@@ -318,14 +327,15 @@ Both charts sit straight on the panel, with no box or ground: muted 12px ticks a
 - **Do** draw pressables in ink (`accent`, #141414): an ink fill for primary and selected, ink text for quiet.
 - **Do** keep brushwork to the band and the Alerts panel's frame layer (`#ink-brush`), and keep text and data crisp.
 - **Do** keep Montserrat to the ink band and the wordmark.
-- **Do** give every animation a reduced-motion path: a cross-fade for the flood, and no Flip, rail transition or count tick.
-- **Do** update the literal hex constants in both chart files whenever an `index.css` colour token changes.
+- **Do** give every animation a reduced-motion path: a cross-fade for the flood, and no Flip, rail transition, count tick, timeline grow or breathe, or stroke draw-in.
+- **Do** update the literal hex constants in `TrafficChart.tsx` (Recharts needs literal colours) whenever an `index.css` colour token changes.
 - **Do** freeze, rather than decay, any "in effect" judgement while data is not arriving, and say so in words.
 
 ### Don't:
-- **Don't** use vermilion, or any hue, for anything but High.
+- **Don't** use vermilion, or any hue, for anything but High, with one exception: kernel drops above 5%, where the alert counts themselves stop being trustworthy.
 - **Don't** reintroduce a blue or any other chromatic accent for pressables, focus or status.
-- **Don't** colour-code chart series or categories. Bars encode magnitude in ink.
+- **Don't** colour-code chart series or categories. Bars encode magnitude in ink; only the timeline's severity stack uses the level tones.
+- **Don't** fake depth with perspective, 3D or non-linear scales. Every mark is linear from zero.
 - **Don't** add shadows. Depth is tonal and drawn.
 - **Don't** run the brush filter over text, numbers, chips, icons or charts.
 - **Don't** show a detector score as one bare percentage. Each score names its detector and its meaning.
