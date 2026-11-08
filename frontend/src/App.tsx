@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ackAlert, createRule, deleteRule, listRules, listUploads, mutedBy, type Rule, type RuleIn } from "./api";
 import AlertFeed, { clockTime, type AlertItem } from "./components/AlertFeed";
+import AlertTimeline from "./components/AlertTimeline";
 import AttackDistribution from "./components/AttackDistribution";
+import AttackMap from "./components/AttackMap";
 import Banners from "./components/Banners";
 import InEffectStrip from "./components/InEffectStrip";
 import InkDefs from "./components/InkDefs";
@@ -11,7 +13,9 @@ import PCAPUpload, { type Batch } from "./components/PCAPUpload";
 import StatusPill from "./components/StatusPill";
 import TokenForm from "./components/TokenForm";
 import TrafficChart, { type TrafficPoint } from "./components/TrafficChart";
+import TopTalkers from "./components/TopTalkers";
 import { API_URL, STALE_AFTER_MS, TRAFFIC_WINDOW_S, WS_URL } from "./config";
+import type { Focus, Health } from "./insights";
 import { authHeader, loadToken, saveToken } from "./token";
 import { useWebSocket } from "./useWebSocket";
 
@@ -35,6 +39,7 @@ export default function App() {
   const [traffic, setTraffic] = useState<TrafficPoint[]>([]);
   const [iface, setIface] = useState<string | null>(null);
   const [lastStatAt, setLastStatAt] = useState<number | null>(null);
+  const [health, setHealth] = useState<Health | null>(null);
   const [modelLoaded, setModelLoaded] = useState<boolean | null>(null);
   const [batches, setBatches] = useState<Record<number, Batch>>({});
   const [token, setToken] = useState(loadToken);
@@ -44,6 +49,8 @@ export default function App() {
   const [activeOnly, setActiveOnly] = useState(false); // the strip filters to what it counts: in effect only
   const [rules, setRules] = useState<Rule[]>([]);
   const [showMuted, setShowMuted] = useState(false);
+  const [partial, setPartial] = useState<Record<string, boolean>>({}); // views where the backend holds more alerts than were loaded
+  const [focus, setFocus] = useState<Focus | null>(null); // set by the timeline, map or talkers; narrows the feed
   const [changed, setChanged] = useState<Map<string, "new" | "updated">>(new Map());
   const [announcement, setAnnouncement] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -65,6 +72,7 @@ export default function App() {
       const page = await response.json();
       for (const a of page.items as AlertItem[]) known.current.set(a.id, a.count);
       setAlerts((prev) => upsert(prev, page.items));
+      setPartial((p) => ({ ...p, [batchId ?? "live"]: page.total > page.items.length }));
     } catch {
       // the connection banner already says the backend is unreachable
     }
@@ -105,6 +113,8 @@ export default function App() {
     } else if (message.type === "stats") {
       setIface(message.data.iface);
       setLastStatAt(Date.now());
+      const d = message.data;
+      if (typeof d.packets === "number") setHealth({ packets: d.packets, activeFlows: d.active_flows, queueDropped: d.dropped_packets, kernelDropped: d.kernel_dropped_packets });
       const time = clockTime(message.data.timestamp);
       setTraffic((prev) => [...prev, { time, pps: message.data.packets_per_s }].slice(-TRAFFIC_WINDOW_S));
     } else if (message.type === "batch") {
@@ -164,6 +174,7 @@ export default function App() {
     setView(batchId);
     filter("all", false);
     setShowMuted(false);
+    setFocus(null);
     if (batchId !== null) loadAlerts(batchId);
   }
 
@@ -240,6 +251,7 @@ export default function App() {
         {/* grid-cols-1 = minmax(0, 1fr): without it the column grows to the table's width on phones */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <div className="space-y-4">
+            {!locked && <AlertTimeline alerts={visible} clock={clock} capture={view !== null} focus={focus} onFocus={setFocus} partial={partial[view ?? "live"] ?? false} />}
             {locked ? (
               <TokenForm onSave={saveNewToken} rejected={rejected} />
             ) : (
@@ -260,11 +272,15 @@ export default function App() {
                 onAck={onAck}
                 onMute={onMute}
                 exportName={view === null ? "live" : `upload-${view}`}
+                focus={focus}
+                onFocus={setFocus}
               />
             )}
           </div>
           <div className="space-y-4">
-            <TrafficChart points={traffic} stale={stale || status === "reconnecting"} />
+            {!locked && <AttackMap alerts={visible} clock={clock} capture={view !== null} focus={focus} onFocus={setFocus} />}
+            {view === null && <TrafficChart points={traffic} stale={stale || status === "reconnecting"} health={health} />}
+            {!locked && <TopTalkers alerts={visible} focus={focus} onFocus={setFocus} />}
             <AttackDistribution alerts={visible} />
             {!locked && (
               <PCAPUpload

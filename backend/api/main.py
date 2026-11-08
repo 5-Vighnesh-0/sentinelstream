@@ -197,6 +197,7 @@ class Hub:
             self.enqueue({"type": "stats", "data": {
                 "timestamp": now_iso(),
                 "packets_per_s": (packets - last) / STATS_EVERY_S,
+                "packets": packets,
                 "active_flows": len(p.table) if p else 0,
                 "dropped_packets": p.capture.dropped if p else 0,
                 "kernel_dropped_packets": p.capture.kernel_dropped() if p else 0,

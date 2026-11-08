@@ -2,6 +2,7 @@ import gzip
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -273,3 +274,19 @@ def test_new_endpoints_need_the_token(client):
                          ("delete", "/suppressions/1"), ("get", "/uploads")):
         kwargs = {"json": {"acknowledged": True}} if method in ("put", "post") else {}
         assert getattr(client, method)(path, **kwargs).status_code == 401, path
+
+
+def test_stats_carry_cumulative_packets(client, monkeypatch):
+    monkeypatch.setattr(main, "STATS_EVERY_S", 0.05)
+    fake = SimpleNamespace(stats={"packets": 1234, "dropped_flows": 0}, table={},
+                           capture=SimpleNamespace(dropped=5, kernel_dropped=lambda: 7), stop=lambda: None)
+    client.app.state.hub.pipeline = fake
+    with ws(client) as socket:
+        for _ in range(100):
+            message = socket.receive_json()
+            if message["type"] == "stats" and message["data"]["packets"] == 1234:
+                break
+        else:
+            raise AssertionError("no stats message carried packets")
+    assert message["data"]["dropped_packets"] == 5
+    assert message["data"]["kernel_dropped_packets"] == 7

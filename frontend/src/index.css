@@ -142,3 +142,24 @@ li {
 .bg-band :focus-visible {
   outline-color: var(--color-band-text);
 }
+
+/* Timeline bars rise from the baseline when their bucket opens; the current bucket breathes so "now" is findable. */
+@keyframes tl-grow {
+  from { transform: scaleY(0); }
+}
+
+.tl-bar {
+  transform-origin: bottom;
+  animation: tl-grow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tl-now {
+  50% { opacity: 0.55; }
+}
+
+.tl-now > span { animation: tl-now 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-bar,
+  .tl-now > span { animation: none; }
+}
