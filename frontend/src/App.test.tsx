@@ -150,7 +150,7 @@ test("switching to an upload's tab clears the filters, so a stale filter can't h
   expect(screen.getByText("In this capture")).toBeTruthy();
 });
 
-test("one shared focus: talkers, then map, then the chip's remove button", async () => {
+test("one shared focus: a map source, then a talker port, then the chip's remove button", async () => {
   localStorage.setItem("sentinelstream.token", "t0k");
   vi.stubGlobal("fetch", api());
   render(<App />);
@@ -164,7 +164,7 @@ test("one shared focus: talkers, then map, then the chip's remove button", async
   fireEvent.click(screen.getAllByRole("button", { name: /^10\.0\.0\.1 1 detection/ })[0]);
   expect(rows()).toBe(1);
   expect(screen.getByRole("button", { name: "Remove filter 10.0.0.1" })).toBeTruthy();
-  fireEvent.click(screen.getAllByRole("button", { name: /^:80 1 detection|^80 1 detection|^port 80 1 detection/ })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: /^port 80 1 detection/ })[0]);
   expect(screen.queryByRole("button", { name: "Remove filter 10.0.0.1" })).toBeNull();
   expect(rows()).toBe(1);
   fireEvent.click(screen.getByRole("button", { name: /^Remove filter/ }));
