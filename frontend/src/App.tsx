@@ -3,6 +3,7 @@ import { ackAlert, createRule, deleteRule, listRules, listUploads, mutedBy, type
 import AlertFeed, { clockTime, type AlertItem } from "./components/AlertFeed";
 import AlertTimeline from "./components/AlertTimeline";
 import AttackDistribution from "./components/AttackDistribution";
+import AttackMap from "./components/AttackMap";
 import Banners from "./components/Banners";
 import InEffectStrip from "./components/InEffectStrip";
 import InkDefs from "./components/InkDefs";
@@ -271,6 +272,7 @@ export default function App() {
             )}
           </div>
           <div className="space-y-4">
+            {!locked && <AttackMap alerts={visible} clock={clock} capture={view !== null} focus={focus} onFocus={setFocus} />}
             <TrafficChart points={traffic} stale={stale || status === "reconnecting"} />
             <AttackDistribution alerts={visible} />
             {!locked && (

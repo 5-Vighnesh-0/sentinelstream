@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import type { AlertItem } from "./AlertFeed";
 import AlertTimeline from "./AlertTimeline";
+import AttackMap from "./AttackMap";
 
 const T0 = Date.parse("2026-11-03T12:00:00.000Z");
 
@@ -25,4 +26,20 @@ test("timeline: a bar per busy minute, and clicking one focuses the feed on it",
 test("timeline: says so when the hour is empty", () => {
   render(<AlertTimeline alerts={[]} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
   expect(screen.getByText("No alerts in the last hour.")).toBeTruthy();
+});
+
+test("map: one button per source and service, +N more past eight, and a click focuses the feed", () => {
+  const onFocus = vi.fn();
+  const alerts = Array.from({ length: 10 }, (_, i) => alert({ src_ip: `10.0.0.${i + 1}`, count: 10 - i }));
+  render(<AttackMap alerts={alerts} clock={T0 + 1_000} capture={false} focus={null} onFocus={onFocus} />);
+  expect(screen.getByText("+2 more")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /^10\.0\.0\.1 / }));
+  expect(onFocus).toHaveBeenCalledWith({ kind: "source", value: "10.0.0.1", label: "10.0.0.1" });
+  fireEvent.click(screen.getByRole("button", { name: /^10\.0\.0\.1:80 / }));
+  expect(onFocus).toHaveBeenCalledWith({ kind: "service", value: "10.0.0.1:80", label: "10.0.0.1:80" });
+});
+
+test("map: says so when there is nothing to map", () => {
+  render(<AttackMap alerts={[]} clock={T0} capture={false} focus={null} onFocus={() => {}} />);
+  expect(screen.getByText("No attacks to map yet.")).toBeTruthy();
 });
